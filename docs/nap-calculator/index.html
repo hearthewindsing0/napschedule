@@ -9,6 +9,13 @@
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#3d5a80">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nap Times">
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://napschedule.com/"}, {"@type": "ListItem", "position": 2, "name": "Nap calculator", "item": "https://napschedule.com/nap-calculator/"}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "How does the nap calculator work?", "acceptedAnswer": {"@type": "Answer", "text": "It uses typical wake windows and nap lengths for your child's age, starting from the time they woke up, to estimate when each nap and bedtime should fall."}}, {"@type": "Question", "name": "What if my baby's nap runs shorter or longer?", "acceptedAnswer": {"@type": "Answer", "text": "Use the times as a starting point. If a nap is shorter than planned, the next nap usually comes a little earlier; if it's longer, a little later. Watch for sleepy cues."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebApplication", "name": "Nap Time Calculator", "url": "https://napschedule.com/nap-calculator/", "applicationCategory": "LifestyleApplication", "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}</script>
 </head><body>
 <header class="site"><div class="wrap"><a class="logo" href="/">Nap<span>Schedule</span></a>
@@ -22,6 +29,25 @@
 <p><button class="btn" id="go" type="button">Calculate schedule</button></p>
 <div id="out" aria-live="polite"></div>
 </div>
+<div class="card install" id="install" hidden>
+<strong>Keep the calculator on your phone</strong>
+<p id="install-text">Add it to your home screen. It opens like an app and works offline, even at 3 AM with bad signal.</p>
+<p><button class="btn" id="install-btn" type="button" hidden>Add to Home Screen</button> <button type="button" id="install-x" class="linkbtn">No thanks</button></p>
+</div>
+<script>
+(function(){
+var box=document.getElementById('install'),btn=document.getElementById('install-btn'),txt=document.getElementById('install-text'),evt=null;
+function dismissed(){try{return localStorage.getItem('installHint')==='no'}catch(e){return false}}
+var standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+if(standalone||dismissed())return;
+var ua=navigator.userAgent,ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(ios){txt.innerHTML='Add it to your home screen: tap the <strong>Share</strong> button in Safari, then <strong>Add to Home Screen</strong>. It opens like an app and works offline.';box.hidden=false}
+addEventListener('beforeinstallprompt',function(e){e.preventDefault();evt=e;btn.hidden=false;box.hidden=false});
+btn.addEventListener('click',function(){if(!evt)return;evt.prompt();evt.userChoice.finally(function(){evt=null;box.hidden=true})});
+document.getElementById('install-x').addEventListener('click',function(){box.hidden=true;try{localStorage.setItem('installHint','no')}catch(e){}});
+addEventListener('appinstalled',function(){box.hidden=true});
+})();
+</script>
 <script>
 const D={"newborn": {"label": "Newborn (0\u20136 weeks)", "ww": [45, 50, 50, 55, 55, 60, 60, 60], "naps": [60, 60, 60, 60, 60, 60, 45], "slug": "newborn-nap-schedule"}, "2-3m": {"label": "2\u20133 months", "ww": [60, 75, 75, 90, 90, 90], "naps": [75, 75, 75, 60, 30], "slug": "2-3-month-nap-schedule"}, "4-5m": {"label": "4\u20135 months", "ww": [90, 105, 120, 105, 90], "naps": [60, 90, 60, 30], "slug": "4-5-month-nap-schedule"}, "6-7m": {"label": "6\u20137 months", "ww": [120, 135, 150, 150], "naps": [75, 90, 30], "slug": "6-7-month-nap-schedule"}, "8-10m": {"label": "8\u201310 months", "ww": [165, 195, 225], "naps": [75, 90], "slug": "8-10-month-nap-schedule"}, "11-14m": {"label": "11\u201314 months", "ww": [180, 195, 225], "naps": [60, 90], "slug": "11-14-month-nap-schedule"}, "15-18m": {"label": "15\u201318 months", "ww": [330, 270], "naps": [150], "slug": "15-18-month-nap-schedule"}, "19-24m": {"label": "19\u201324 months", "ww": [330, 300], "naps": [120], "slug": "19-24-month-nap-schedule"}, "2-3y": {"label": "2\u20133 years", "ww": [345, 315], "naps": [105], "slug": "2-3-year-old-nap-schedule"}, "3-5y": {"label": "3\u20135 years", "ww": [360, 330], "naps": [60], "slug": "3-5-year-old-nap-schedule"}};
 function f(m){m=((m%1440)+1440)%1440;let h=Math.floor(m/60),mm=m%60,ap=h<12?'AM':'PM';h=h%12||12;return h+':'+String(mm).padStart(2,'0')+' '+ap}
@@ -32,7 +58,8 @@ a.naps.forEach((n,i)=>{t+=a.ww[i];r+='<tr><td>'+f(t)+' – '+f(t+n)+'</td><td>Na
 t+=a.ww[a.naps.length];r+='<tr><td>'+f(t)+'</td><td>Bedtime</td></tr></tbody></table>';
 r+='<p>These are estimates. Watch your child for sleepy cues and adjust by 15 minutes or so. <a href="/schedules/'+a.slug+'/">See the full '+a.label+' guide →</a></p>';
 document.getElementById('out').innerHTML=r}
-const q=new URLSearchParams(location.search).get('age');if(q&&D[q])document.getElementById('age').value=q;
+let q=new URLSearchParams(location.search).get('age');if(!q){try{q=localStorage.getItem('napAge')}catch(e){}}if(q&&D[q])document.getElementById('age').value=q;
+document.getElementById('age').addEventListener('change',e=>{try{localStorage.setItem('napAge',e.target.value)}catch(_){}});
 document.getElementById('go').addEventListener('click',run);document.getElementById('age').addEventListener('change',run);document.getElementById('wake').addEventListener('change',run);run();
 </script>
 <!-- ad slot: set ADSENSE_CLIENT in build.py -->
@@ -44,4 +71,5 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 </div></main>
 <footer><div class="wrap"><a href="/about/">About</a><a href="/privacy/">Privacy</a><a href="/disclaimer/">Disclaimer</a><a href="/nap-gear/">Nap gear</a>
 <p>© 2026 NapSchedule.com · General information only, not medical advice.</p></div></footer>
+<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}</script>
 </body></html>

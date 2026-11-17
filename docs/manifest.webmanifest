@@ -1,0 +1,37 @@
+{
+ "name": "Nap Time Calculator by NapSchedule",
+ "short_name": "Nap Times",
+ "description": "Nap times and bedtime for your baby or toddler, based on age and wake-up time.",
+ "id": "/nap-calculator/",
+ "start_url": "/nap-calculator/?source=pwa",
+ "scope": "/",
+ "display": "standalone",
+ "background_color": "#fbf8f3",
+ "theme_color": "#3d5a80",
+ "icons": [
+  {
+   "src": "/icons/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "Nap schedules by age",
+   "url": "/schedules/"
+  }
+ ]
+}

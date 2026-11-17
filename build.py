@@ -3,7 +3,7 @@
 
 Monetization settings: fill these in, run `python3 build.py`, commit, push.
 """
-import json, os, shutil, html, datetime
+import json, os, shutil, html, datetime, hashlib
 from content_ages import AGES
 from content_guides import GUIDES
 
@@ -77,7 +77,7 @@ def schedule_rows(age, wake=7 * 60):
 # ---------------------------------------------------------------------------
 CSS = """
 :root{--bg:#fbf8f3;--card:#fff;--ink:#22262e;--muted:#5d6472;--line:#e7e1d6;--brand:#3d5a80;--brand2:#e0a96d;--soft:#eef2f8}
-*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+*{box-sizing:border-box}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--brand)}a:hover{color:#253b57}
 .wrap{max-width:820px;margin:0 auto;padding:0 18px}
@@ -101,12 +101,65 @@ th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vert
 .crumbs{font-size:.88rem;color:var(--muted)}.crumbs a{color:var(--muted)}
 .gear h3{margin:.2em 0}.gear p{margin:.3em 0 .6em}
 .ad{margin:24px 0;min-height:0}
+.install{border-color:var(--brand2);background:#fff8ee}.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.95rem}
 label{font-weight:600;display:block;margin:10px 0 4px}
 select,input[type=time]{font-size:1rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;min-width:220px;max-width:100%}
 footer{border-top:1px solid var(--line);background:var(--card);font-size:.9rem;color:var(--muted);padding:20px 0}
 footer a{color:var(--muted);margin-right:14px}
 @media(max-width:560px){h1{font-size:1.6rem}nav a{margin-left:12px}}
 """
+
+
+SW = """// Offline support: same-origin only, so ad and affiliate requests are never cached.
+const CACHE = 'nap-__VERSION__';
+const PRECACHE = __PRECACHE__;
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== location.origin) return;
+  if (req.mode === 'navigate') {
+    // Network first for pages, so content updates show up; fall back to cache offline.
+    e.respondWith(fetch(req).then(res => {
+      const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res;
+    }).catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match('/nap-calculator/'))));
+    return;
+  }
+  e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => {
+    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+    return res;
+  })));
+});
+"""
+
+
+SW_REGISTER = """<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))}</script>"""
+
+INSTALL_HINT = r"""<div class="card install" id="install" hidden>
+<strong>Keep the calculator on your phone</strong>
+<p id="install-text">Add it to your home screen. It opens like an app and works offline, even at 3 AM with bad signal.</p>
+<p><button class="btn" id="install-btn" type="button" hidden>Add to Home Screen</button> <button type="button" id="install-x" class="linkbtn">No thanks</button></p>
+</div>
+<script>
+(function(){
+var box=document.getElementById('install'),btn=document.getElementById('install-btn'),txt=document.getElementById('install-text'),evt=null;
+function dismissed(){try{return localStorage.getItem('installHint')==='no'}catch(e){return false}}
+var standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+if(standalone||dismissed())return;
+var ua=navigator.userAgent,ios=/iphone|ipad|ipod/i.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(ios){txt.innerHTML='Add it to your home screen: tap the <strong>Share</strong> button in Safari, then <strong>Add to Home Screen</strong>. It opens like an app and works offline.';box.hidden=false}
+addEventListener('beforeinstallprompt',function(e){e.preventDefault();evt=e;btn.hidden=false;box.hidden=false});
+btn.addEventListener('click',function(){if(!evt)return;evt.prompt();evt.userChoice.finally(function(){evt=null;box.hidden=true})});
+document.getElementById('install-x').addEventListener('click',function(){box.hidden=true;try{localStorage.setItem('installHint','no')}catch(e){}});
+addEventListener('appinstalled',function(){box.hidden=true});
+})();
+</script>"""
 
 
 def ad_slot():
@@ -154,6 +207,13 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#3d5a80">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Nap Times">
 {adsense_head}{ld_html}
 </head><body>
 <header class="site"><div class="wrap"><a class="logo" href="/">Nap<span>Schedule</span></a>
@@ -163,6 +223,7 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 </div></main>
 <footer><div class="wrap"><a href="/about/">About</a><a href="/privacy/">Privacy</a><a href="/disclaimer/">Disclaimer</a><a href="/nap-gear/">Nap gear</a>
 <p>© {datetime.date.today().year} NapSchedule.com · General information only, not medical advice.</p></div></footer>
+{SW_REGISTER}
 </body></html>"""
     if path.endswith(".html"):
         fn = os.path.join(OUT, path.strip("/"))
@@ -283,6 +344,7 @@ def build():
 <p><button class="btn" id="go" type="button">Calculate schedule</button></p>
 <div id="out" aria-live="polite"></div>
 </div>
+{INSTALL_HINT}
 <script>
 const D={json.dumps(calc_data)};
 function f(m){{m=((m%1440)+1440)%1440;let h=Math.floor(m/60),mm=m%60,ap=h<12?'AM':'PM';h=h%12||12;return h+':'+String(mm).padStart(2,'0')+' '+ap}}
@@ -293,7 +355,8 @@ a.naps.forEach((n,i)=>{{t+=a.ww[i];r+='<tr><td>'+f(t)+' – '+f(t+n)+'</td><td>N
 t+=a.ww[a.naps.length];r+='<tr><td>'+f(t)+'</td><td>Bedtime</td></tr></tbody></table>';
 r+='<p>These are estimates. Watch your child for sleepy cues and adjust by 15 minutes or so. <a href="/schedules/'+a.slug+'/">See the full '+a.label+' guide →</a></p>';
 document.getElementById('out').innerHTML=r}}
-const q=new URLSearchParams(location.search).get('age');if(q&&D[q])document.getElementById('age').value=q;
+let q=new URLSearchParams(location.search).get('age');if(!q){{try{{q=localStorage.getItem('napAge')}}catch(e){{}}}}if(q&&D[q])document.getElementById('age').value=q;
+document.getElementById('age').addEventListener('change',e=>{{try{{localStorage.setItem('napAge',e.target.value)}}catch(_){{}}}});
 document.getElementById('go').addEventListener('click',run);document.getElementById('age').addEventListener('change',run);document.getElementById('wake').addEventListener('change',run);run();
 </script>
 {ad_slot()}
@@ -363,6 +426,27 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
         f.write(CSS.strip())
     with open(os.path.join(OUT, "favicon.svg"), "w") as f:
         f.write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#3d5a80"/><path d="M40 14a20 20 0 1 0 10 34A18 18 0 0 1 40 14z" fill="#e0a96d"/></svg>')
+    shutil.copytree("static/icons", os.path.join(OUT, "icons"))
+    shutil.copy("static/icon.svg", os.path.join(OUT, "icons", "icon.svg"))
+    manifest = {
+        "name": "Nap Time Calculator by NapSchedule", "short_name": "Nap Times",
+        "description": "Nap times and bedtime for your baby or toddler, based on age and wake-up time.",
+        "id": "/nap-calculator/", "start_url": "/nap-calculator/?source=pwa", "scope": "/",
+        "display": "standalone", "background_color": "#fbf8f3", "theme_color": "#3d5a80",
+        "icons": [
+            {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+        "shortcuts": [{"name": "Nap schedules by age", "url": "/schedules/"}],
+    }
+    with open(os.path.join(OUT, "manifest.webmanifest"), "w") as f:
+        json.dump(manifest, f, indent=1)
+    precache = ["/", "/nap-calculator/", "/schedules/", "/style.css", "/favicon.svg", "/manifest.webmanifest",
+                "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-180.png"] + [p for p in pages if p.startswith("/schedules/")]
+    version = hashlib.sha1("".join(open(os.path.join(dp, fn), "rb").read().hex() for dp, _, fns in sorted(os.walk(OUT)) for fn in sorted(fns)).encode()).hexdigest()[:10]
+    with open(os.path.join(OUT, "sw.js"), "w") as f:
+        f.write(SW.replace("__VERSION__", version).replace("__PRECACHE__", json.dumps(sorted(set(precache)))))
     with open(os.path.join(OUT, "CNAME"), "w") as f:
         f.write("napschedule.com\n")
     with open(os.path.join(OUT, ".nojekyll"), "w") as f:
