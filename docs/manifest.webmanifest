@@ -1,7 +1,7 @@
 {
- "name": "Nap Time Calculator by NapSchedule",
- "short_name": "Nap Times",
- "description": "Nap times and bedtime for your baby or toddler, based on age and wake-up time.",
+ "name": "Babywise Schedule Calculator by NapSchedule",
+ "short_name": "Babywise Day",
+ "description": "Plan your baby's eat-wake-sleep day by age, based on Babywise, plus toddler nap times.",
  "id": "/nap-calculator/",
  "start_url": "/nap-calculator/?source=pwa",
  "scope": "/",
@@ -30,8 +30,8 @@
  ],
  "shortcuts": [
   {
-   "name": "Nap schedules by age",
-   "url": "/schedules/"
+   "name": "Babywise schedules by age",
+   "url": "/babywise/"
   }
  ]
 }

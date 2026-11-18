@@ -6,6 +6,7 @@ Monetization settings: fill these in, run `python3 build.py`, commit, push.
 import json, os, shutil, html, datetime, hashlib
 from content_ages import AGES
 from content_guides import GUIDES
+from content_babywise import BW_STAGES, BOOK
 
 # ---- Monetization config -------------------------------------------------
 AMAZON_TAG = ""        # Amazon Associates tracking ID, e.g. "napschedule-20"
@@ -16,6 +17,17 @@ SITE = "https://napschedule.com"
 NAME = "NapSchedule"
 OUT = "docs"
 TODAY = datetime.date.today().isoformat()
+
+BOOKS = [
+    ("On Becoming Babywise", "On Becoming Babywise Ezzo Bucknam",
+     "The original book behind the eat-wake-sleep routine, covering birth to about 5 months: full feedings, the feed-wake-sleep cycle and how feeds merge over time."),
+    ("On Becoming Babywise Book Two", "On Becoming Babywise Book Two Ezzo",
+     "The follow-up for roughly 5 to 15 months: solids, naps, the move to fewer feeds and early toddler routines."),
+    ("On Becoming Pretoddlerwise", "On Becoming Pretoddlerwise Ezzo",
+     "The Ezzos' book for the 12 to 18 month stretch, including the transition to one nap."),
+    ("On Becoming Toddlerwise", "On Becoming Toddlerwise Ezzo",
+     "Routines, naps and structure for toddlers from about 18 months to 3 years."),
+]
 
 GEAR = [
     ("White noise machine", "white noise machine baby",
@@ -169,11 +181,52 @@ def ad_slot():
 
 
 def gear_box(n=3):
+    picks = BOOKS[:2] + GEAR[:n - 1]
     items = "".join(
         f'<li><a href="{esc(amazon_url(q))}" rel="sponsored nofollow noopener" target="_blank">{esc(t)}</a></li>'
-        for t, q, _ in GEAR[:n])
-    return f'''<div class="card"><strong>Nap helpers parents like</strong><ul>{items}</ul>
+        for t, q, _ in picks)
+    return f'''<div class="card"><strong>Books and nap helpers parents like</strong><ul>{items}</ul>
 <small>See our <a href="/nap-gear/">full nap gear list</a>. As an Amazon Associate we earn from qualifying purchases.</small></div>'''
+
+
+BW_NOTE = ('<p class="note"><strong>About Babywise and feeding schedules:</strong> The American Academy of Pediatrics recommends feeding babies '
+           'when they show hunger cues, and in 1998 it raised concerns that strict schedule-based feeding can lead to poor weight gain, '
+           'dehydration and low milk supply. If you use a Babywise-style routine, treat feeding times as flexible, feed your baby whenever '
+           'they are hungry, and keep up with weight checks at your pediatrician. NapSchedule is not affiliated with the Babywise authors or publisher.</p>')
+
+
+# Old 0-12 month wake-window pages now forward to the matching Babywise stage.
+BW_REDIRECT = {"newborn": "babywise-schedule-weeks-1-2", "2-3m": "babywise-schedule-weeks-8-12",
+               "4-5m": "babywise-schedule-weeks-16-24", "6-7m": "babywise-schedule-6-9-months",
+               "8-10m": "babywise-schedule-9-12-months"}
+TODDLERS = [a for a in AGES if a["key"] not in BW_REDIRECT]
+
+
+def redirect_page(path, target):
+    d = os.path.join(OUT, path.strip("/"))
+    os.makedirs(d, exist_ok=True)
+    url = SITE + target
+    with open(os.path.join(d, "index.html"), "w") as f:
+        f.write(f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Moved</title>
+<link rel="canonical" href="{url}"><meta name="robots" content="noindex,follow"><meta http-equiv="refresh" content="0; url={target}">
+</head><body><p>This page has moved to <a href="{target}">{url}</a>.</p></body></html>''')
+
+
+def bw_rows(st, first=7 * 60):
+    rows = []
+    cyc = st["cycles"]
+    for i, (off, label, wake, nap) in enumerate(cyc):
+        t = first + off
+        rows.append((t, fmt_time(t), label + (" and waketime" if nap and nap != "night" else "")))
+        if nap == "night":
+            rows.append((t + wake, fmt_time(t + wake), "Down for the night"))
+        elif nap:
+            end = first + cyc[i + 1][0]
+            when = fmt_time(t + wake) if nap.startswith("Catnap") else f"{fmt_time(t + wake)} – {fmt_time(end)}"
+            rows.append((t + wake, when, nap))
+    for off, label in st["night"]:
+        rows.append((first + off, fmt_time(first + off), label))
+    return [(a, b) for _, a, b in rows]
 
 
 DISCLAIMER = '<p class="note">This site shares general information, not medical advice. Every child is different. Talk with your pediatrician about your child\'s sleep, especially if you have concerns about health, growth, or breathing.</p>'
@@ -213,11 +266,11 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Nap Times">
+<meta name="apple-mobile-web-app-title" content="Babywise Day">
 {adsense_head}{ld_html}
 </head><body>
 <header class="site"><div class="wrap"><a class="logo" href="/">Nap<span>Schedule</span></a>
-<nav><a href="/schedules/">By age</a><a href="/nap-calculator/">Calculator</a><a href="/guides/">Guides</a></nav></div></header>
+<nav><a href="/schedules/">By age</a><a href="/babywise/">Babywise</a><a href="/nap-calculator/">Calculator</a><a href="/guides/">Guides</a></nav></div></header>
 <main><div class="wrap">{crumbs_html}
 {body}
 </div></main>
@@ -262,11 +315,16 @@ def build():
     # Age pages
     for i, a in enumerate(AGES):
         path = f"/schedules/{a['slug']}/"
+        if a["key"] in BW_REDIRECT:
+            redirect_page(path, f"/babywise/{BW_REDIRECT[a['key']]}/")
+            continue
         rows = "".join(f"<tr><td>{esc(t)}</td><td>{esc(x)}</td></tr>" for t, x in schedule_rows(a))
         prev_a = AGES[i - 1] if i > 0 else None
         next_a = AGES[i + 1] if i + 1 < len(AGES) else None
         pn = ""
-        if prev_a:
+        if prev_a and prev_a["key"] in BW_REDIRECT:
+            pn += '<a href="/babywise/babywise-schedule-9-12-months/">← Babywise 9–12 months</a>'
+        elif prev_a:
             pn += f'<a href="/schedules/{prev_a["slug"]}/">← {esc(prev_a["label"])}</a>'
         if next_a:
             pn += f'<a style="float:right" href="/schedules/{next_a["slug"]}/">{esc(next_a["label"])} →</a>'
@@ -285,6 +343,7 @@ def build():
 <tr><td>Daytime sleep</td><td>{a['day_sleep']}</td></tr>
 <tr><td>Typical bedtime</td><td>{a['bedtime']}</td></tr></tbody></table>
 {a['intro']}
+<p><strong>Following Babywise?</strong> The same predictable rhythm carries on into toddlerhood: consistent wake-up, meals, naps and bedtime at about the same times every day. The Ezzos cover this stage in <a href="{esc(amazon_url(BOOKS[2][1]))}" rel="sponsored nofollow noopener" target="_blank"><em>On Becoming Pretoddlerwise</em></a> and <a href="{esc(amazon_url(BOOKS[3][1]))}" rel="sponsored nofollow noopener" target="_blank"><em>On Becoming Toddlerwise</em></a>.</p>
 {ad_slot()}
 <h2>Sample {esc(a['short'])} schedule</h2>
 <p>Based on a 7:00 AM wake-up. Your times will shift with your baby's wake time. <a href="/nap-calculator/?age={a['key']}">Get times for your day →</a></p>
@@ -301,17 +360,21 @@ def build():
                           crumbs=[H, ("Schedules by age", "/schedules/"), (a["label"], path)]))
 
     # Schedules hub
-    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/">{esc(a["label"])}<small>{a["naps_count"]} naps · wake windows {a["ww_range"]}</small></a></li>' for a in AGES)
-    summary = "".join(f'<tr><td><a href="/schedules/{a["slug"]}/">{esc(a["label"])}</a></td><td>{a["naps_count"]}</td><td>{a["ww_range"]}</td><td>{a["total"]}</td></tr>' for a in AGES)
+    bgrid0 = "".join(f'<li><a href="/babywise/{st["slug"]}/">Babywise {esc(st["label"])}<small>Naps: {st["naps"]} · Feeds: {esc(st["feeds"])}</small></a></li>' for st in BW_STAGES)
+    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/">{esc(a["label"])}<small>{a["naps_count"]} naps · awake {a["ww_range"]}</small></a></li>' for a in TODDLERS)
+    summary = "".join(f'<tr><td><a href="/schedules/{a["slug"]}/">{esc(a["label"])}</a></td><td>{a["naps_count"]}</td><td>{a["ww_range"]}</td><td>{a["total"]}</td></tr>' for a in TODDLERS)
     body = f"""<h1>Nap schedules by age</h1>
-<p class="lead">Pick your child's age for a typical nap schedule, wake windows, and a sample day, from newborn to 5 years.</p>
+<p class="lead">Babywise eat-wake-sleep schedules for the first year, then toddler nap schedules up to age 5.</p>
+<h2>Birth to 12 months: Babywise schedules</h2>
+<ul class="grid">{bgrid0}</ul>
+<p><a href="/babywise/">How the Babywise routine works →</a></p>
+<h2>12 months to 5 years: toddler naps</h2>
 <ul class="grid">{grid}</ul>
-<h2>Nap chart at a glance</h2>
-<table><thead><tr><th>Age</th><th>Naps</th><th>Wake windows</th><th>Total sleep / 24h</th></tr></thead><tbody>{summary}</tbody></table>
-<p>Total sleep ranges follow the American Academy of Sleep Medicine recommendations endorsed by the American Academy of Pediatrics (for babies 4 months and older) and the National Sleep Foundation (for newborns).</p>
+<table><thead><tr><th>Age</th><th>Naps</th><th>Time awake between sleeps</th><th>Total sleep / 24h</th></tr></thead><tbody>{summary}</tbody></table>
+<p><small>First-year schedules are summarized from {esc(BOOK)}. Toddler sleep totals follow the American Academy of Sleep Medicine recommendations endorsed by the American Academy of Pediatrics.</small></p>
 {DISCLAIMER}"""
-    pages.append(page("/schedules/", "Baby & Toddler Nap Schedules by Age (Newborn to 5 Years)",
-                      "Nap schedules for every age from newborn to 5 years: how many naps, wake windows, total sleep, and sample days.",
+    pages.append(page("/schedules/", "Baby & Toddler Nap Schedules by Age: Babywise to Age 5",
+                      "Babywise eat-wake-sleep schedules for birth to 12 months, plus toddler nap schedules to age 5: naps, feeds, total sleep and sample days.",
                       body, crumbs=[H, ("Schedules by age", "/schedules/")]))
 
     # Guides
@@ -331,17 +394,88 @@ def build():
                       f'<h1>Nap guides</h1><p class="lead">Short, practical guides for the trickiest parts of naps.</p><ul class="grid">{grid}</ul>',
                       crumbs=[H, ("Guides", "/guides/")]))
 
+    # Babywise section
+    BWH = ("Babywise schedules", "/babywise/")
+    for i, st in enumerate(BW_STAGES):
+        path = f"/babywise/{st['slug']}/"
+        rows = "".join(f"<tr><td>{esc(t)}</td><td>{esc(x)}</td></tr>" for t, x in bw_rows(st))
+        tips = "".join(f"<li>{t}</li>" for t in st["tips"])
+        pn = ""
+        if i > 0:
+            pn += f'<a href="/babywise/{BW_STAGES[i-1]["slug"]}/">← {esc(BW_STAGES[i-1]["label"])}</a>'
+        if i + 1 < len(BW_STAGES):
+            pn += f'<a style="float:right" href="/babywise/{BW_STAGES[i+1]["slug"]}/">{esc(BW_STAGES[i+1]["label"])} →</a>'
+        body = f"""<h1>Babywise schedule: {esc(st['label'])}</h1>
+<p class="lead">{esc(st['desc'])}</p>
+<table class="glance"><tbody>
+<tr><td>Naps per day</td><td>{st['naps']}</td></tr>
+<tr><td>Total sleep (24 hrs)</td><td>{st['sleep']}</td></tr>
+<tr><td>Feeds per day</td><td>{st['feeds']}</td></tr>
+<tr><td>Time between feeds</td><td>{st['interval']}</td></tr>
+<tr><td>Waketime (our estimate)</td><td>{st['waketime']}</td></tr></tbody></table>
+<p><small>Naps, total sleep and feed counts are from {esc(BOOK)}, summarized in our own words. Waketime is our estimate.</small></p>
+{st['intro']}
+{ad_slot()}
+<h2>Sample eat-wake-sleep day</h2>
+<p>Based on a 7:00 AM first feed. <a href="/nap-calculator/?method=bw&amp;age={st['key']}">Get times for your day →</a></p>
+<table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>{rows}</tbody></table>
+<h2>Tips for this stage</h2><ul>{tips}</ul>
+{gear_box()}
+{BW_NOTE}
+{DISCLAIMER}
+<p>{pn}</p>"""
+        pages.append(page(path, st["title"], st["desc"], body, schema=[article_schema(st["title"], st["desc"], path)],
+                          crumbs=[H, BWH, (st["label"], path)]))
+    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/">{esc(st["label"])}<small>Naps: {st["naps"]} · Feeds: {esc(st["feeds"])}</small></a></li>' for st in BW_STAGES)
+    btab = "".join(f'<tr><td><a href="/babywise/{st["slug"]}/">{esc(st["label"])}</a></td><td>{st["naps"]}</td><td>{st["sleep"]}</td><td>{esc(st["feeds"])}</td></tr>' for st in BW_STAGES)
+    books = "".join(f'<li><a href="{esc(amazon_url(q))}" rel="sponsored nofollow noopener" target="_blank">{esc(t)}</a>: {esc(d)}</li>' for t, q, d in BOOKS)
+    bw_faq = [("What is the Babywise method?", "Babywise is a parent-directed routine from the book On Becoming Babywise by Gary Ezzo and Robert Bucknam, MD. Each part of the day follows the same order: feed, waketime, then sleep. Feeds are spaced roughly 2.5 to 3 hours apart in the early weeks, and feeds gradually merge as the baby grows."),
+              ("When do Babywise babies sleep through the night?", "The authors say many babies on the routine sleep through the night somewhere around 8 to 12 weeks. Many healthy babies take longer, and night feeds should continue as long as your baby is hungry."),
+              ("Is Babywise safe?", "The AAP recommends feeding on hunger cues and has warned that rigid schedules can cause poor weight gain and low milk supply. If you follow a Babywise-style routine, keep it flexible, feed your baby when hungry, and track weight gain with your pediatrician.")]
+    body = f"""<h1>Babywise schedules by age</h1>
+<p class="lead">Eat-wake-sleep routines from birth to 12 months, based on <em>On Becoming Babywise</em>. Pick your baby's age for feed times, naps and a sample day.</p>
+<ul class="grid">{bgrid}</ul>
+<h2>How the Babywise routine works</h2>
+<p>Babywise organizes the day into repeating <strong>feed, waketime, sleep</strong> cycles. Instead of feeding a baby to sleep, you feed after they wake, enjoy some awake time, then put them down for a nap. The authors call this parent-directed feeding: the parent sets a rhythm, while still watching the baby's hunger cues.</p>
+<p>Over the first year, feeds gradually <strong>merge</strong>. Night feeds go first, then the late-evening feed, then a daytime feed as solids arrive, until your baby is eating family meals with two naps a day.</p>
+<h2>Babywise chart at a glance</h2>
+<table><thead><tr><th>Age</th><th>Naps</th><th>Total sleep</th><th>Feeds</th></tr></thead><tbody>{btab}</tbody></table>
+<p><small>Summarized from {esc(BOOK)}.</small></p>
+<h2>Signs your baby is eating enough</h2>
+<ul><li>At least 8 feeds a day in the first few weeks, 7 or more by about 5 weeks.</li>
+<li>Plenty of wet diapers (about 6 or more a day after the first week) with pale urine.</li>
+<li>Regular stools and steady weight gain at checkups.</li>
+<li>A baby who seems satisfied after feeds and is alert during waketime.</li></ul>
+<p>If any of these are off, feed more often and call your pediatrician.</p>
+{ad_slot()}
+<h2>The Babywise books</h2><ul>{books}</ul>
+<p><small>As an Amazon Associate we earn from qualifying purchases.</small></p>
+<p><a class="btn" href="/nap-calculator/?method=bw">Build a Babywise day in the calculator</a></p>
+{faq_html(bw_faq)}
+{BW_NOTE}
+{DISCLAIMER}"""
+    pages.append(page("/babywise/", "Babywise Schedule by Age: Eat-Wake-Sleep Routines 0–12 Months",
+                      "Babywise-style eat-wake-sleep schedules from birth to 12 months: feeds, waketimes, naps and sample days, based on On Becoming Babywise.",
+                      body, schema=[faq_schema(bw_faq)], crumbs=[H, BWH]))
+
     # Calculator
-    calc_data = {a["key"]: {"label": a["label"], "ww": a["ww"], "naps": a["naps"], "slug": a["slug"]} for a in AGES}
-    opts = "".join(f'<option value="{a["key"]}">{esc(a["label"])}</option>' for a in AGES)
-    calc_faq = [("How does the nap calculator work?", "It uses typical wake windows and nap lengths for your child's age, starting from the time they woke up, to estimate when each nap and bedtime should fall."),
-                ("What if my baby's nap runs shorter or longer?", "Use the times as a starting point. If a nap is shorter than planned, the next nap usually comes a little earlier; if it's longer, a little later. Watch for sleepy cues.")]
-    body = f"""<h1>Nap time calculator</h1>
-<p class="lead">Enter your child's age and what time they woke up. We'll suggest nap times and a bedtime based on typical wake windows.</p>
+    calc_data = {}
+    for st in BW_STAGES:
+        calc_data[st["key"]] = {"bw": 1, "label": "Babywise " + st["label"], "path": f"/babywise/{st['slug']}/",
+                                "cycles": [list(c) for c in st["cycles"]], "night": [list(n) for n in st["night"]]}
+    for a in TODDLERS:
+        calc_data[a["key"]] = {"bw": 0, "label": a["label"], "path": f"/schedules/{a['slug']}/", "ww": a["ww"], "naps": a["naps"]}
+    opts = ('<optgroup label="Babywise (birth to 12 months)">' + "".join(f'<option value="{st["key"]}">{esc(st["label"])}</option>' for st in BW_STAGES)
+            + '</optgroup><optgroup label="Toddlers">' + "".join(f'<option value="{a["key"]}">{esc(a["label"])}</option>' for a in TODDLERS) + '</optgroup>')
+    calc_faq = [("How does the Babywise calculator work?", "For babies under 12 months, it lays out eat-wake-sleep cycles from your first feed of the day, using the feed spacing and number of naps described in On Becoming Babywise for your baby's age. For toddlers, it uses typical awake times and nap lengths."),
+                ("What if my baby is hungry early?", "Feed your baby. The times are a plan for the day, not a rule. Babywise itself says to feed a hungry baby, and the AAP recommends feeding on hunger cues."),
+                ("What if a nap runs short or long?", "Start the next feed at about the planned time if you can, or shift the rest of the day by the same amount. Consistency over several days matters more than any single nap.")]
+    body = f"""<h1>Babywise schedule calculator</h1>
+<p class="lead">Pick your baby's age and the time of the first feed. You'll get a full eat-wake-sleep day based on Babywise, or a nap plan for toddlers.</p>
 <div class="card">
-<label for="age">Child's age</label><select id="age">{opts}</select>
-<label for="wake">Woke up at</label><input type="time" id="wake" value="07:00">
-<p><button class="btn" id="go" type="button">Calculate schedule</button></p>
+<label for="age">Baby's age</label><select id="age">{opts}</select>
+<label for="wake" id="wake-label">First feed of the day</label><input type="time" id="wake" value="07:00">
+<p><button class="btn" id="go" type="button">Build my schedule</button></p>
 <div id="out" aria-live="polite"></div>
 </div>
 {INSTALL_HINT}
@@ -349,43 +483,56 @@ def build():
 const D={json.dumps(calc_data)};
 function f(m){{m=((m%1440)+1440)%1440;let h=Math.floor(m/60),mm=m%60,ap=h<12?'AM':'PM';h=h%12||12;return h+':'+String(mm).padStart(2,'0')+' '+ap}}
 function d(m){{const h=Math.floor(m/60),x=m%60;return (h?h+' hr'+(h>1?'s':''):'')+(h&&x?' ':'')+(x?x+' min':'')}}
-function run(){{const a=D[document.getElementById('age').value];const v=document.getElementById('wake').value||'07:00';let [h,m]=v.split(':').map(Number);let t=h*60+m;
-let r='<table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody><tr><td>'+f(t)+'</td><td>Wake up</td></tr>';
-a.naps.forEach((n,i)=>{{t+=a.ww[i];r+='<tr><td>'+f(t)+' – '+f(t+n)+'</td><td>Nap '+(i+1)+' (about '+d(n)+')</td></tr>';t+=n}});
-t+=a.ww[a.naps.length];r+='<tr><td>'+f(t)+'</td><td>Bedtime</td></tr></tbody></table>';
-r+='<p>These are estimates. Watch your child for sleepy cues and adjust by 15 minutes or so. <a href="/schedules/'+a.slug+'/">See the full '+a.label+' guide →</a></p>';
+function row(a,b){{return '<tr><td>'+a+'</td><td>'+b+'</td></tr>'}}
+function run(){{const a=D[document.getElementById('age').value];const v=document.getElementById('wake').value||'07:00';let [h,m]=v.split(':').map(Number);const s0=h*60+m;let t=s0;
+document.getElementById('wake-label').textContent=a.bw?'First feed of the day':'Woke up at';
+let r='<table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>';
+if(a.bw){{a.cycles.forEach((c,i)=>{{const [off,lab,wk,nap]=c;const ft=s0+off;r+=row(f(ft),lab+(nap&&nap!=='night'?' and waketime':''));
+if(nap==='night')r+=row(f(ft+wk),'Down for the night');else if(nap)r+=row(nap.startsWith('Catnap')?f(ft+wk):f(ft+wk)+' – '+f(s0+a.cycles[i+1][0]),nap)}});
+a.night.forEach(n=>{{r+=row(f(s0+n[0]),n[1])}});r+='</tbody></table>';
+r+='<p>Feed times are a guide. If your baby is hungry sooner, feed them. <a href="'+a.path+'">See the full '+a.label+' schedule →</a></p>'}}
+else{{r+=row(f(t),'Wake up');a.naps.forEach((n,i)=>{{t+=a.ww[i];r+=row(f(t)+' – '+f(t+n),'Nap '+(i+1)+' (about '+d(n)+')');t+=n}});
+t+=a.ww[a.naps.length];r+=row(f(t),'Bedtime')+'</tbody></table>';
+r+='<p>These are estimates. Watch for sleepy cues and adjust by 15 minutes or so. <a href="'+a.path+'">See the full '+a.label+' guide →</a></p>'}}
 document.getElementById('out').innerHTML=r}}
-let q=new URLSearchParams(location.search).get('age');if(!q){{try{{q=localStorage.getItem('napAge')}}catch(e){{}}}}if(q&&D[q])document.getElementById('age').value=q;
+const OLD={{"newborn":"bw-1-2w","2-3m":"bw-8-12w","4-5m":"bw-16-24w","6-7m":"bw-25-38w","8-10m":"bw-39-52w"}};
+let q=new URLSearchParams(location.search).get('age');if(!q){{try{{q=localStorage.getItem('napAge')}}catch(e){{}}}}if(q&&OLD[q])q=OLD[q];if(q&&D[q])document.getElementById('age').value=q;
 document.getElementById('age').addEventListener('change',e=>{{try{{localStorage.setItem('napAge',e.target.value)}}catch(_){{}}}});
 document.getElementById('go').addEventListener('click',run);document.getElementById('age').addEventListener('change',run);document.getElementById('wake').addEventListener('change',run);run();
 </script>
 {ad_slot()}
 <h2>How to use these times</h2>
-<p>The calculator assumes each nap lasts a typical length for your child's age. Real naps vary, so treat the result as a plan for the day, not a rule. If a nap ends early, the next one usually needs to start earlier. For newborns, follow your baby's hunger and sleepy cues first.</p>
-<p>Learn more about <a href="/guides/wake-windows/">wake windows by age</a>.</p>
+<p>For babies under 12 months, each row follows the Babywise order: feed, waketime, then nap. Start the day with the first feed at the same time each morning, and the rest of the day tends to fall into place. Waketime lengths are our estimates within the book's feed spacing. Real babies vary, so treat this as a plan, not a rule.</p>
+<p>New to the routine? Read <a href="/babywise/">how Babywise works</a>.</p>
 {faq_html(calc_faq)}
+{BW_NOTE}
 {DISCLAIMER}"""
-    pages.append(page("/nap-calculator/", "Nap Time Calculator: Baby & Toddler Nap Schedule Maker",
-                      "Free nap time calculator: enter your baby's age and wake-up time to get suggested nap times and bedtime, newborn to 5 years.",
-                      body, schema=[faq_schema(calc_faq), {"@context": "https://schema.org", "@type": "WebApplication", "name": "Nap Time Calculator",
+    pages.append(page("/nap-calculator/", "Babywise Schedule Calculator: Eat-Wake-Sleep Day Planner",
+                      "Free Babywise schedule calculator: enter your baby's age and first feed time to get feed, waketime and nap times for the day, plus toddler nap plans.",
+                      body, schema=[faq_schema(calc_faq), {"@context": "https://schema.org", "@type": "WebApplication", "name": "Babywise Schedule Calculator",
                                                           "url": SITE + "/nap-calculator/", "applicationCategory": "LifestyleApplication",
                                                           "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}],
                       crumbs=[H, ("Nap calculator", "/nap-calculator/")]))
 
     # Gear
     items = "".join(f'<div class="card gear"><h3>{esc(t)}</h3><p>{esc(p)}</p><a class="btn" href="{esc(amazon_url(q))}" rel="sponsored nofollow noopener" target="_blank">See options on Amazon</a></div>' for t, q, p in GEAR)
-    body = f"""<h1>Nap gear that actually helps</h1>
-<p class="lead">You don't need much to get good naps. These are the few things that make the biggest difference for most families.</p>
+    bitems = "".join(f'<div class="card gear"><h3>{esc(t)}</h3><p>{esc(p)}</p><a class="btn" href="{esc(amazon_url(q))}" rel="sponsored nofollow noopener" target="_blank">See it on Amazon</a></div>' for t, q, p in BOOKS)
+    body = f"""<h1>Babywise books and nap gear</h1>
+<p class="lead">The books behind the eat-wake-sleep routine, plus the few pieces of gear that make the biggest difference for naps.</p>
 <p class="note">As an Amazon Associate we earn from qualifying purchases. It doesn't change the price you pay.</p>
+<h2>The Babywise books</h2>
+{bitems}
+<h2>Nap gear</h2>
 {items}
 <p>Whatever you buy, keep the crib bare: a firm mattress and fitted sheet only. See <a href="/guides/safe-sleep-basics/">safe sleep basics</a>.</p>"""
-    pages.append(page("/nap-gear/", "Baby Nap Essentials: Gear That Helps Naps", "The few baby and toddler nap essentials that make the biggest difference: white noise, blackout shades, sleep sacks, and toddler clocks.",
+    pages.append(page("/nap-gear/", "Babywise Books and Baby Nap Essentials", "The Babywise book series by age, plus the nap essentials that make the biggest difference: white noise, blackout shades, sleep sacks and toddler clocks.",
                       body, crumbs=[H, ("Nap gear", "/nap-gear/")]))
 
     # Static info pages
     pages.append(page("/about/", "About NapSchedule", "About NapSchedule.com: simple, practical nap schedules for babies and toddlers.",
                       """<h1>About NapSchedule</h1><p>NapSchedule.com is a simple, no-nonsense reference for baby and toddler nap schedules. Our goal is to give tired parents clear, practical answers: how many naps, how long between them, and what a typical day looks like at each age.</p>
-<p>Our schedules are based on widely used pediatric sleep guidance, including the total sleep recommendations from the American Academy of Sleep Medicine (endorsed by the American Academy of Pediatrics) and the AAP's safe sleep recommendations. Typical ranges are just that: typical. Your child may need a little more or less.</p>
+<p>Our first-year schedules follow the eat-wake-sleep routine described in <em>On Becoming Babywise</em> (25th Anniversary Edition) by Gary Ezzo and Robert Bucknam, MD, summarized in our own words. Toddler schedules use the total sleep recommendations from the American Academy of Sleep Medicine (endorsed by the American Academy of Pediatrics), and our safety advice follows the AAP's safe sleep recommendations. We are not affiliated with the Babywise authors or publisher.</p>
+<p>Because the AAP recommends feeding babies on hunger cues, we always present Babywise feed times as a flexible guide. Your baby's hunger and growth come first.</p>
 <p>We keep the site free with advertising and affiliate links. See our <a href="/privacy/">privacy policy</a> and <a href="/disclaimer/">disclaimer</a>.</p>""" + DISCLAIMER))
     pages.append(page("/disclaimer/", "Disclaimer", "Medical and affiliate disclaimer for NapSchedule.com.",
                       """<h1>Disclaimer</h1><h2>Not medical advice</h2><p>The content on NapSchedule.com is for general informational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment. Always ask your pediatrician or another qualified health provider about your child's health and sleep. If you think your child may have a medical emergency, call your doctor or emergency services immediately.</p>
@@ -399,22 +546,26 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 <h2>Children</h2><p>This site is written for parents and caregivers and is not directed to children under 13.</p>"""))
 
     # Home
-    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/">{esc(a["label"])}<small>Naps: {a["naps_count"]}</small></a></li>' for a in AGES)
+    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/">{esc(st["label"])}<small>Naps: {st["naps"]}</small></a></li>' for st in BW_STAGES)
+    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/">{esc(a["label"])}<small>Naps: {a["naps_count"]}</small></a></li>' for a in TODDLERS)
     ggrid = "".join(f'<li><a href="/guides/{g["slug"]}/">{esc(g["h1"])}</a></li>' for g in GUIDES)
-    home_faq = [("How many naps does a baby need?", "It depends on age: newborns take 4–7 naps, 4–5 month olds take 3–4, 6–7 month olds take 3, babies from about 8 months to 15 months take 2, and most toddlers take 1 nap until somewhere between ages 3 and 5."),
-                ("When do babies drop to one nap?", "Most toddlers move from two naps to one between 13 and 18 months."),
-                ("What is a wake window?", "A wake window is the time a child is awake between sleeps. It grows from under an hour for newborns to 5–6 hours for toddlers.")]
-    body = f"""<h1>Baby & toddler nap schedules, by age</h1>
-<p class="lead">Simple nap schedules from newborn to 5 years: how many naps, how long between them, and what a typical day looks like. Plus a free calculator that builds a schedule from your child's wake-up time.</p>
-<p><a class="btn" href="/nap-calculator/">Open the nap calculator</a></p>
-<h2>Find your child's schedule</h2><ul class="grid">{grid}</ul>
+    home_faq = [("What is a Babywise schedule?", "A Babywise schedule follows the routine from On Becoming Babywise: the day repeats in feed, waketime, sleep cycles, with feeds about 2.5 to 3 hours apart in the early weeks and fewer, fuller feeds as the baby grows."),
+                ("How many naps does a Babywise baby take?", "According to the book, about 5 to 6 naps in the first weeks, 4 to 5 around 2 to 3 months, 3 to 4 from about 3 to 6 months, 2 to 3 from 6 to 9 months, and 2 by 9 to 12 months."),
+                ("When do toddlers drop to one nap?", "Most toddlers move from two naps to one between 13 and 18 months.")]
+    body = f"""<h1>Babywise schedules, made simple</h1>
+<p class="lead">Eat-wake-sleep routines for every stage of the first year, toddler nap schedules to age 5, and a free calculator that builds your baby's day from the first feed.</p>
+<p><a class="btn" href="/nap-calculator/">Open the Babywise calculator</a></p>
+<h2>Babywise schedules: birth to 12 months</h2><ul class="grid">{bgrid}</ul>
+<p><a href="/babywise/">New to Babywise? Start here →</a></p>
 {ad_slot()}
-<h2>Popular guides</h2><ul class="grid">{ggrid}</ul>
+<h2>Toddler nap schedules</h2><ul class="grid">{grid}</ul>
+<h2>Guides</h2><ul class="grid">{ggrid}</ul>
 {gear_box()}
 {faq_html(home_faq)}
+{BW_NOTE}
 {DISCLAIMER}"""
-    pages.append(page("/", "Nap Schedules by Age: Baby & Toddler Nap Schedule + Calculator",
-                      "Free baby and toddler nap schedules by age, newborn to 5 years: wake windows, number of naps, sample days, and a nap time calculator.",
+    pages.append(page("/", "Babywise Schedule by Age + Calculator | NapSchedule",
+                      "Babywise eat-wake-sleep schedules from birth to 12 months, toddler nap schedules to age 5, and a free Babywise schedule calculator.",
                       body, schema=[faq_schema(home_faq)]))
 
     # 404
@@ -429,8 +580,8 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
     shutil.copytree("static/icons", os.path.join(OUT, "icons"))
     shutil.copy("static/icon.svg", os.path.join(OUT, "icons", "icon.svg"))
     manifest = {
-        "name": "Nap Time Calculator by NapSchedule", "short_name": "Nap Times",
-        "description": "Nap times and bedtime for your baby or toddler, based on age and wake-up time.",
+        "name": "Babywise Schedule Calculator by NapSchedule", "short_name": "Babywise Day",
+        "description": "Plan your baby's eat-wake-sleep day by age, based on Babywise, plus toddler nap times.",
         "id": "/nap-calculator/", "start_url": "/nap-calculator/?source=pwa", "scope": "/",
         "display": "standalone", "background_color": "#fbf8f3", "theme_color": "#3d5a80",
         "icons": [
@@ -438,12 +589,12 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
             {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
             {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
         ],
-        "shortcuts": [{"name": "Nap schedules by age", "url": "/schedules/"}],
+        "shortcuts": [{"name": "Babywise schedules by age", "url": "/babywise/"}],
     }
     with open(os.path.join(OUT, "manifest.webmanifest"), "w") as f:
         json.dump(manifest, f, indent=1)
     precache = ["/", "/nap-calculator/", "/schedules/", "/style.css", "/favicon.svg", "/manifest.webmanifest",
-                "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-180.png"] + [p for p in pages if p.startswith("/schedules/")]
+                "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-180.png"] + [p for p in pages if p.startswith(("/schedules/", "/babywise/"))]
     version = hashlib.sha1("".join(open(os.path.join(dp, fn), "rb").read().hex() for dp, _, fns in sorted(os.walk(OUT)) for fn in sorted(fns)).encode()).hexdigest()[:10]
     with open(os.path.join(OUT, "sw.js"), "w") as f:
         f.write(SW.replace("__VERSION__", version).replace("__PRECACHE__", json.dumps(sorted(set(precache)))))

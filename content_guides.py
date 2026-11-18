@@ -29,7 +29,9 @@ GUIDES = [
 <p><strong>Too short (undertired):</strong> your baby takes a long time to fall asleep, chats or plays in the crib, or takes a short nap and wakes happy.</p>
 <p><strong>Too long (overtired):</strong> your baby is fussy or wired, cries hard at naptime, falls asleep quickly but wakes after 30–45 minutes upset, or has early-morning wakings.</p>
 <p>Adjust in small steps of 10–15 minutes and give each change a few days before deciding whether it worked.</p>
-<p>Want exact times for your day? Try the <a href="/nap-calculator/">nap time calculator</a>.</p>""",
+<h2>Wake windows and Babywise</h2>
+<p>If you follow Babywise, you'll see awake time called <strong>waketime</strong>. It comes right after a feed, and the routine is planned around the time from the start of one feed to the start of the next (about 2.5 to 3 hours in the early weeks). The wake windows above still help you judge when your baby is ready for the nap at the end of each cycle. See <a href="/babywise/">Babywise schedules by age</a>.</p>
+<p>Want exact times for your day? Try the <a href="/nap-calculator/">Babywise schedule calculator</a>.</p>""",
         "faq": [
             ("What is a wake window?", "A wake window is the amount of time a baby or toddler is awake between sleeps, measured from when they wake up until they fall asleep again."),
             ("Do wake windows matter after one year?", "They still help, but by the time a child is on one nap, a consistent daily schedule usually matters more than precise wake windows."),
@@ -83,7 +85,7 @@ GUIDES = [
 </ul>
 <h2>What helps</h2>
 <ol>
-<li><strong>Move to a 4-month-appropriate schedule.</strong> Wake windows of about 1.5–2 hours and 3–4 naps. See the <a href="/schedules/4-5-month-nap-schedule/">4–5 month nap schedule</a>.</li>
+<li><strong>Move to a 4-month-appropriate schedule.</strong> Wake windows of about 1.5–2 hours and 3–4 naps. See the <a href="/babywise/babywise-schedule-weeks-16-24/">Babywise 4–5 month schedule</a>.</li>
 <li><strong>Make the room sleep-friendly:</strong> dark for naps and nights, with steady white noise.</li>
 <li><strong>Use a consistent, short routine</strong> before every sleep.</li>
 <li><strong>Practice putting your baby down drowsy but awake</strong> for at least one sleep a day. Falling asleep independently is what helps babies link cycles.</li>
@@ -124,7 +126,7 @@ GUIDES = [
 <tr><td>2:15 PM</td><td>Nap 2 (about 1–1.5 hours)</td></tr>
 <tr><td>7:00–7:30 PM</td><td>Bedtime</td></tr>
 </tbody></table>
-<p>Expect the transition to take one to three weeks. See the full <a href="/schedules/8-10-month-nap-schedule/">8–10 month nap schedule</a>.</p>""",
+<p>Expect the transition to take one to three weeks. See the full <a href="/babywise/babywise-schedule-9-12-months/">Babywise 9–12 month schedule</a>.</p>""",
         "faq": [
             ("What age do babies drop to 2 naps?", "Most babies drop from three naps to two between 7 and 9 months."),
             ("Should I drop the 3rd nap if it's short?", "A short third nap is normal and expected. Drop it when your baby regularly refuses it or when it makes bedtime too late."),

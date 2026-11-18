@@ -1,6 +1,6 @@
 // Offline support: same-origin only, so ad and affiliate requests are never cached.
-const CACHE = 'nap-eb35c413bc';
-const PRECACHE = ["/", "/favicon.svg", "/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png", "/manifest.webmanifest", "/nap-calculator/", "/schedules/", "/schedules/11-14-month-nap-schedule/", "/schedules/15-18-month-nap-schedule/", "/schedules/19-24-month-nap-schedule/", "/schedules/2-3-month-nap-schedule/", "/schedules/2-3-year-old-nap-schedule/", "/schedules/3-5-year-old-nap-schedule/", "/schedules/4-5-month-nap-schedule/", "/schedules/6-7-month-nap-schedule/", "/schedules/8-10-month-nap-schedule/", "/schedules/newborn-nap-schedule/", "/style.css"];
+const CACHE = 'nap-3c8e1df621';
+const PRECACHE = ["/", "/babywise/", "/babywise/babywise-schedule-6-9-months/", "/babywise/babywise-schedule-9-12-months/", "/babywise/babywise-schedule-weeks-1-2/", "/babywise/babywise-schedule-weeks-13-15/", "/babywise/babywise-schedule-weeks-16-24/", "/babywise/babywise-schedule-weeks-3-5/", "/babywise/babywise-schedule-weeks-6-7/", "/babywise/babywise-schedule-weeks-8-12/", "/favicon.svg", "/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png", "/manifest.webmanifest", "/nap-calculator/", "/schedules/", "/schedules/11-14-month-nap-schedule/", "/schedules/15-18-month-nap-schedule/", "/schedules/19-24-month-nap-schedule/", "/schedules/2-3-year-old-nap-schedule/", "/schedules/3-5-year-old-nap-schedule/", "/style.css"];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
