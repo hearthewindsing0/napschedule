@@ -65,6 +65,13 @@ def fmt_time(minutes):
     return f"{h12}:{m:02d} {ap}"
 
 
+def fmt_range(a, b):
+    x, y = fmt_time(a), fmt_time(b)
+    if x[-2:] == y[-2:]:
+        return f"{x[:-3]}–{y}"
+    return f"{x}–{y}"
+
+
 def fmt_dur(m):
     h, mm = divmod(m, 60)
     if h and mm:
@@ -79,7 +86,7 @@ def schedule_rows(age, wake=7 * 60):
     t = wake
     for i, nap in enumerate(age["naps"]):
         t += age["ww"][i]
-        rows.append((f"{fmt_time(t)} – {fmt_time(t + nap)}", f"Nap {i + 1} ({fmt_dur(nap)})"))
+        rows.append((fmt_range(t, t + nap), f"Nap {i + 1} ({fmt_dur(nap)})"))
         t += nap
     t += age["ww"][len(age["naps"])]
     rows.append((fmt_time(t), "Bedtime (start routine 20–30 minutes earlier)"))
@@ -88,37 +95,65 @@ def schedule_rows(age, wake=7 * 60):
 
 # ---------------------------------------------------------------------------
 CSS = """
-:root{--bg:#fbf8f3;--card:#fff;--ink:#22262e;--muted:#5d6472;--line:#e7e1d6;--brand:#3d5a80;--brand2:#e0a96d;--soft:#eef2f8}
+:root{--bg:#faf7f2;--bg2:#f3eee5;--card:#fff;--ink:#1f2433;--muted:#5b6275;--line:#e8e1d5;--brand:#2f4a75;--brand-ink:#fff;--accent:#e3a564;--accent-soft:#fbeedd;--accent-ink:#a5621f;--soft:#eef2f8;
+--feed:#e3a564;--nap:#7a9cc6;--night:#4a4e8f;--wake:#9bbf8a;--shadow:0 1px 2px rgba(31,36,51,.04),0 4px 16px rgba(31,36,51,.06);--r:14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151f;--bg2:#181c29;--card:#1c2130;--ink:#e9e6f0;--muted:#a3a9bb;--line:#2b3144;--brand:#9db8e8;--brand-ink:#12151f;--accent:#e9b27a;--accent-soft:#2a2620;--accent-ink:#e9b27a;--soft:#20263a;--nap:#88a8d4;--night:#9a9de6;--shadow:0 1px 2px rgba(0,0,0,.3)}}
 *{box-sizing:border-box}[hidden]{display:none!important}html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-a{color:var(--brand)}a:hover{color:#253b57}
-.wrap{max-width:820px;margin:0 auto;padding:0 18px}
-header.site{background:var(--card);border-bottom:1px solid var(--line)}
-header.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}
-.logo{font-weight:800;font-size:1.25rem;text-decoration:none;color:var(--ink)}.logo span{color:var(--brand2)}
-nav a{margin-left:16px;text-decoration:none;font-weight:600;font-size:.95rem}nav a:first-child{margin-left:0}
-main{padding:28px 0 40px}
-h1{font-size:2rem;line-height:1.2;margin:.2em 0 .4em}h2{font-size:1.4rem;margin-top:1.8em}h3{font-size:1.12rem;margin-top:1.4em}
-.lead{font-size:1.1rem;color:var(--muted)}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin:1em 0;font-size:.97rem}
-th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--soft)}tr:last-child td{border-bottom:0}
-.glance td:first-child{font-weight:600;width:42%}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin:16px 0}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:0;list-style:none}
-.grid a{display:block;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;text-decoration:none;font-weight:600}
-.grid a small{display:block;font-weight:400;color:var(--muted)}
-.btn{display:inline-block;background:var(--brand);color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:700;border:0;cursor:pointer;font-size:1rem}
-.btn:hover{background:#2c4462;color:#fff}
-.note{font-size:.88rem;color:var(--muted);border-left:3px solid var(--brand2);padding:4px 12px;margin:24px 0}
-.crumbs{font-size:.88rem;color:var(--muted)}.crumbs a{color:var(--muted)}
-.gear h3{margin:.2em 0}.gear p{margin:.3em 0 .6em}
-.ad{margin:24px 0;min-height:0}
-.install{border-color:var(--brand2);background:#fff8ee}.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.95rem}
-label{font-weight:600;display:block;margin:10px 0 4px}
-select,input[type=time]{font-size:1rem;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;min-width:220px;max-width:100%}
-footer{border-top:1px solid var(--line);background:var(--card);font-size:.9rem;color:var(--muted);padding:20px 0}
-footer a{color:var(--muted);margin-right:14px}
-@media(max-width:560px){h1{font-size:1.6rem}nav a{margin-left:12px}}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--brand);text-underline-offset:3px;text-decoration-thickness:1px}a:hover{text-decoration-thickness:2px}
+.wrap{max-width:800px;margin:0 auto;padding:0 20px}
+h1,h2,h3,.logo{font-family:Fraunces,Georgia,"Times New Roman",serif;font-optical-sizing:auto;letter-spacing:-.01em}
+h1{font-size:2.3rem;line-height:1.15;margin:.3em 0 .35em;font-weight:650}
+h2{font-size:1.5rem;line-height:1.25;margin:2em 0 .5em;font-weight:600}h3{font-size:1.15rem;margin:1.5em 0 .3em;font-weight:600}
+.lead{font-size:1.12rem;color:var(--muted);margin-top:0}
+header.site{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+header.site .wrap{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:60px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.25rem;text-decoration:none;color:var(--ink)}.logo .wm b{color:var(--accent);font-weight:700}
+.logo svg{width:28px;height:28px;flex:none}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}nav::-webkit-scrollbar{display:none}
+nav a{padding:6px 10px;border-radius:999px;text-decoration:none;font-weight:600;font-size:.93rem;white-space:nowrap;color:var(--ink)}
+nav a:hover{background:var(--bg2)}
+main{padding:22px 0 56px}
+.hero{background:linear-gradient(160deg,var(--soft),var(--accent-soft));border:1px solid var(--line);border-radius:22px;padding:30px 26px;margin:6px 0 10px;position:relative;overflow:hidden}
+.hero h1{margin-top:0}.hero .lead{max-width:34em}
+.hero:after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;box-shadow:-26px 26px 0 0 var(--accent);opacity:.25}
+table{width:100%;border-collapse:separate;border-spacing:0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin:1em 0;font-size:.97rem;box-shadow:var(--shadow)}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:var(--bg2);font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}tr:last-child td{border-bottom:0}
+.glance td:first-child{font-weight:600;width:44%;color:var(--muted)}.glance td:last-child{font-weight:600}
+.tl td:first-child{white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600;width:1%}
+.tl td:last-child{position:relative;padding-left:34px}
+.tl td:last-child:before{content:"";position:absolute;left:14px;top:18px;width:10px;height:10px;border-radius:50%;background:var(--wake)}
+.tl tr.feed td:last-child:before{background:var(--feed)}.tl tr.nap td:last-child:before{background:var(--nap)}.tl tr.night td:last-child:before{background:var(--night)}
+.tl tr.nap{background:color-mix(in srgb,var(--nap) 9%,transparent)}.tl tr.night{background:color-mix(in srgb,var(--night) 10%,transparent)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.85rem;color:var(--muted);margin:.4em 0 0}.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;margin:18px 0;box-shadow:var(--shadow)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:0;margin:0;list-style:none}
+.grid a{display:flex;flex-direction:column;align-items:flex-start;height:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 18px;text-decoration:none;font-weight:650;color:var(--ink);box-shadow:var(--shadow);transition:transform .15s,border-color .15s}
+.grid a:hover{transform:translateY(-2px);border-color:var(--accent)}
+.grid a small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
+.btn{display:inline-block;background:var(--brand);color:var(--brand-ink);padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;border:0;cursor:pointer;font-size:1rem;box-shadow:0 2px 8px color-mix(in srgb,var(--brand) 35%,transparent)}
+.btn:hover{filter:brightness(1.08);color:var(--brand-ink)}
+.note{font-size:.88rem;color:var(--muted);background:var(--bg2);border-radius:10px;padding:12px 16px;margin:22px 0;border:0}
+.eyebrow{margin:.6em 0 0;font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink)}
+.eyebrow+h1{margin-top:.15em}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:18px 0 8px}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow)}
+.stats dt{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.stats dd{margin:2px 0 0;font-weight:650;line-height:1.35}
+.chip{display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--brand);background:var(--soft);border-radius:999px;padding:2px 8px;margin-bottom:6px}
+.crumbs{font-size:.86rem;color:var(--muted)}.crumbs a{color:var(--muted)}
+.gear h3{margin:.1em 0}.gear p{margin:.3em 0 .9em}
+.ad{margin:28px 0;min-height:0}
+.calc{background:linear-gradient(180deg,var(--card),var(--card)) padding-box;border-top:4px solid var(--accent)}
+.fields{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+label{font-weight:650;display:block;margin:4px 0 6px;font-size:.92rem}
+select,input[type=time]{font:inherit;font-size:1rem;width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+select:focus,input:focus,.btn:focus-visible,a:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 60%,transparent);outline-offset:2px}
+.install{border-color:var(--accent);background:var(--accent-soft)}.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.95rem}
+footer{border-top:1px solid var(--line);background:var(--bg2);font-size:.88rem;color:var(--muted);padding:26px 0 34px}
+footer a{color:var(--muted);margin-right:16px}
+@media(max-width:600px){body{font-size:16.5px}.grid{grid-template-columns:1fr 1fr;gap:10px}.grid a{padding:12px 14px;font-size:.95rem}.stats{grid-template-columns:1fr 1fr}.tl td:first-child{white-space:normal;width:38%}h1{font-size:1.85rem}h2{font-size:1.32rem}.hero{padding:22px 18px;border-radius:18px}.fields{grid-template-columns:1fr}
+header.site .wrap{flex-wrap:wrap;padding-top:8px;padding-bottom:6px;gap:4px}nav{width:100%;margin:0 -10px}th,td{padding:10px 11px}.tl td:last-child{padding-left:30px}.tl td:last-child:before{left:11px}}
 """
 
 
@@ -174,6 +209,26 @@ addEventListener('appinstalled',function(){box.hidden=true});
 </script>"""
 
 
+AGE_HINT = {"bw-1-2w": "Newborn", "bw-3-5w": "About 1 month", "bw-6-7w": "About 6 weeks", "bw-8-12w": "2–3 months",
+            "bw-13-15w": "About 3 months", "bw-16-24w": "4–5 months", "bw-25-38w": "6–9 months", "bw-39-52w": "9–12 months"}
+
+
+def kind(text):
+    t = text.lower()
+    if "down for the night" in t or (t.startswith("bedtime") and "feed" not in t) or "bedtime routine" in t:
+        return "night"
+    if t.startswith(("nap", "catnap", "evening sleep", "quiet")):
+        return "nap"
+    if any(w in t for w in ("feed", "milk", "breakfast", "lunch", "snack", "dinner")):
+        return "feed"
+    if any(w in t for w in ("nap", "sleep", "quiet time")):
+        return "nap"
+    return "wake"
+
+
+LEGEND = '<div class="legend"><span><i style="background:var(--feed)"></i>Feed or meal</span><span><i style="background:var(--wake)"></i>Awake</span><span><i style="background:var(--nap)"></i>Nap</span><span><i style="background:var(--night)"></i>Night</span></div>'
+
+
 def ad_slot():
     if not ADSENSE_CLIENT:
         return "<!-- ad slot: set ADSENSE_CLIENT in build.py -->"
@@ -222,7 +277,7 @@ def bw_rows(st, first=7 * 60):
             rows.append((t + wake, fmt_time(t + wake), "Down for the night"))
         elif nap:
             end = first + cyc[i + 1][0]
-            when = fmt_time(t + wake) if nap.startswith("Catnap") else f"{fmt_time(t + wake)} – {fmt_time(end)}"
+            when = fmt_time(t + wake) if nap.startswith("Catnap") else fmt_range(t + wake, end)
             rows.append((t + wake, when, nap))
     for off, label in st["night"]:
         rows.append((first + off, fmt_time(first + off), label))
@@ -264,9 +319,11 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <meta property="og:title" content="{esc(title)}"><meta property="og:description" content="{esc(desc)}"><meta property="og:url" content="{url}">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap">
 <link rel="stylesheet" href="/style.css">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="theme-color" content="#3d5a80">
+<meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#12151f" media="(prefers-color-scheme: dark)">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -274,7 +331,7 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <meta name="apple-mobile-web-app-title" content="Nap Day">
 {adsense_head}{ld_html}
 </head><body>
-<header class="site"><div class="wrap"><a class="logo" href="/">Nap<span>Schedule</span></a>
+<header class="site"><div class="wrap"><a class="logo" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2f4a75"/><path d="M37 15a17 17 0 1 0 12 28A15 15 0 0 1 37 15z" fill="#e3a564"/></svg><span class="wm">Nap<b>Schedule</b></span></a>
 <nav><a href="/schedules/">By age</a><a href="/babywise/">Babywise</a><a href="/nap-calculator/">Calculator</a><a href="/guides/">Guides</a></nav></div></header>
 <main><div class="wrap">{crumbs_html}
 {body}
@@ -323,7 +380,7 @@ def build():
         if a["key"] in BW_REDIRECT:
             redirect_page(path, f"/babywise/{BW_REDIRECT[a['key']]}/")
             continue
-        rows = "".join(f"<tr><td>{esc(t)}</td><td>{esc(x)}</td></tr>" for t, x in schedule_rows(a))
+        rows = "".join(f'<tr class="{kind(x)}"><td>{esc(t)}</td><td>{esc(x)}</td></tr>' for t, x in schedule_rows(a))
         prev_a = AGES[i - 1] if i > 0 else None
         next_a = AGES[i + 1] if i + 1 < len(AGES) else None
         pn = ""
@@ -336,23 +393,24 @@ def build():
         tips = "".join(f"<li>{t}</li>" for t in a["tips"])
         extra = ""
         if a["key"] == "3-5y":
-            extra = '<h3>Sample day without a nap</h3><table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody><tr><td>7:00 AM</td><td>Wake up</td></tr><tr><td>1:00 – 2:00 PM</td><td>Quiet time in their room</td></tr><tr><td>6:45 – 7:30 PM</td><td>Bedtime (earlier than on nap days)</td></tr></tbody></table>'
+            extra = '<h3>Sample day without a nap</h3><table class="tl"><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody><tr class="wake"><td>7:00 AM</td><td>Wake up</td></tr><tr class="nap"><td>1:00 – 2:00 PM</td><td>Quiet time in their room</td></tr><tr class="night"><td>6:45 – 7:30 PM</td><td>Bedtime (earlier than on nap days)</td></tr></tbody></table>'
         if a["key"] == "newborn":
             extra = "<p><em>Newborn days rarely look this tidy. Use this as a rough picture of how often your baby may sleep, not a schedule to enforce.</em></p>"
-        body = f"""<h1>{esc(a['label'])} nap schedule</h1>
+        body = f"""<p class="eyebrow">Toddler nap schedule</p><h1>{esc(a['label'])} nap schedule</h1>
 <p class="lead">{esc(a['desc'])}</p>
-<table class="glance"><tbody>
-<tr><td>Total sleep (24 hrs)</td><td>{a['total']}</td></tr>
-<tr><td>Naps per day</td><td>{a['naps_count']}</td></tr>
-<tr><td>Wake windows</td><td>{a['ww_range']}</td></tr>
-<tr><td>Daytime sleep</td><td>{a['day_sleep']}</td></tr>
-<tr><td>Typical bedtime</td><td>{a['bedtime']}</td></tr></tbody></table>
+<dl class="stats">
+<div><dt>Naps a day</dt><dd>{a['naps_count']}</dd></div>
+<div><dt>Total sleep</dt><dd>{a['total']}</dd></div>
+<div><dt>Awake between sleeps</dt><dd>{a['ww_range']}</dd></div>
+<div><dt>Daytime sleep</dt><dd>{a['day_sleep']}</dd></div>
+<div><dt>Bedtime</dt><dd>{a['bedtime']}</dd></div></dl>
 {a['intro']}
 <p><strong>Following Babywise?</strong> The same predictable rhythm carries on into toddlerhood: consistent wake-up, meals, naps and bedtime at about the same times every day. The Ezzos cover this stage in <a href="{esc(amazon_url(BOOKS[2][1]))}" rel="sponsored nofollow noopener" target="_blank"><em>On Becoming Pretoddlerwise</em></a> and <a href="{esc(amazon_url(BOOKS[3][1]))}" rel="sponsored nofollow noopener" target="_blank"><em>On Becoming Toddlerwise</em></a>.</p>
 {ad_slot()}
 <h2>Sample {esc(a['short'])} schedule</h2>
 <p>Based on a 7:00 AM wake-up. Your times will shift with your baby's wake time. <a href="/nap-calculator/?age={a['key']}">Get times for your day →</a></p>
-<table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>{rows}</tbody></table>
+<table class="tl"><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>{rows}</tbody></table>
+{LEGEND}
 {extra}
 <h2>Tips for this age</h2><ul>{tips}</ul>
 <h2>What's next</h2><p>{a['next']}</p>
@@ -365,8 +423,8 @@ def build():
                           crumbs=[H, ("Schedules by age", "/schedules/"), (a["label"], path)]))
 
     # Schedules hub
-    bgrid0 = "".join(f'<li><a href="/babywise/{st["slug"]}/">Babywise {esc(st["label"])}<small>Naps: {st["naps"]} · Feeds: {esc(st["feeds"])}</small></a></li>' for st in BW_STAGES)
-    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/">{esc(a["label"])}<small>{a["naps_count"]} naps · awake {a["ww_range"]}</small></a></li>' for a in TODDLERS)
+    bgrid0 = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span>{esc(st["label"].split(" (")[0])}<small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
+    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/"><span class="chip">Toddler</span>{esc(a["label"])}<small>{a["naps_count"]} {"nap" if a["naps_count"] == "1" else "naps"} a day</small></a></li>' for a in TODDLERS)
     summary = "".join(f'<tr><td><a href="/schedules/{a["slug"]}/">{esc(a["label"])}</a></td><td>{a["naps_count"]}</td><td>{a["ww_range"]}</td><td>{a["total"]}</td></tr>' for a in TODDLERS)
     body = f"""<h1>Nap schedules by age</h1>
 <p class="lead">Babywise eat-wake-sleep schedules for the first year, then toddler nap schedules up to age 5.</p>
@@ -403,27 +461,29 @@ def build():
     BWH = ("Babywise schedules", "/babywise/")
     for i, st in enumerate(BW_STAGES):
         path = f"/babywise/{st['slug']}/"
-        rows = "".join(f"<tr><td>{esc(t)}</td><td>{esc(x)}</td></tr>" for t, x in bw_rows(st))
+        rows = "".join(f'<tr class="{kind(x)}"><td>{esc(t)}</td><td>{esc(x)}</td></tr>' for t, x in bw_rows(st))
         tips = "".join(f"<li>{t}</li>" for t in st["tips"])
         pn = ""
         if i > 0:
             pn += f'<a href="/babywise/{BW_STAGES[i-1]["slug"]}/">← {esc(BW_STAGES[i-1]["label"])}</a>'
         if i + 1 < len(BW_STAGES):
             pn += f'<a style="float:right" href="/babywise/{BW_STAGES[i+1]["slug"]}/">{esc(BW_STAGES[i+1]["label"])} →</a>'
-        body = f"""<h1>Babywise-style schedule: {esc(st['label'])}</h1>
+        body = f"""<p class="eyebrow">Babywise-style schedule · {esc(AGE_HINT[st['key']])}</p>
+<h1>{esc(st['label'].split(' (')[0])} eat-wake-sleep schedule</h1>
 <p class="lead">{esc(st['desc'])}</p>
-<table class="glance"><tbody>
-<tr><td>Naps per day</td><td>{st['naps']}</td></tr>
-<tr><td>Total sleep (24 hrs)</td><td>{st['sleep']}</td></tr>
-<tr><td>Feeds per day</td><td>{st['feeds']}</td></tr>
-<tr><td>Time between feeds</td><td>{st['interval']}</td></tr>
-<tr><td>Waketime (our estimate)</td><td>{st['waketime']}</td></tr></tbody></table>
+<dl class="stats">
+<div><dt>Naps a day</dt><dd>{st['naps']}</dd></div>
+<div><dt>Total sleep</dt><dd>{st['sleep']}</dd></div>
+<div><dt>Feeds a day</dt><dd>{st['feeds']}</dd></div>
+<div><dt>Between feeds</dt><dd>{st['interval']}</dd></div>
+<div><dt>Waketime (our estimate)</dt><dd>{st['waketime']}</dd></div></dl>
 <p><small>Naps, total sleep and feed counts are from {esc(BOOK)}, summarized in our own words. Waketime is our estimate.</small></p>
 {st['intro']}
 {ad_slot()}
 <h2>Sample eat-wake-sleep day</h2>
 <p>Based on a 7:00 AM first feed. <a href="/nap-calculator/?method=bw&amp;age={st['key']}">Get times for your day →</a></p>
-<table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>{rows}</tbody></table>
+<table class="tl"><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>{rows}</tbody></table>
+{LEGEND}
 <h2>Tips for this stage</h2><ul>{tips}</ul>
 {gear_box()}
 {BW_NOTE}
@@ -432,7 +492,7 @@ def build():
 <p>{pn}</p>"""
         pages.append(page(path, st["title"], st["desc"], body, schema=[article_schema(st["title"], st["desc"], path)],
                           crumbs=[H, BWH, (st["label"], path)]))
-    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/">{esc(st["label"])}<small>Naps: {st["naps"]} · Feeds: {esc(st["feeds"])}</small></a></li>' for st in BW_STAGES)
+    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span>{esc(st["label"].split(" (")[0])}<small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
     btab = "".join(f'<tr><td><a href="/babywise/{st["slug"]}/">{esc(st["label"])}</a></td><td>{st["naps"]}</td><td>{st["sleep"]}</td><td>{esc(st["feeds"])}</td></tr>' for st in BW_STAGES)
     books = "".join(f'<li><a href="{esc(amazon_url(q))}" rel="sponsored nofollow noopener" target="_blank">{esc(t)}</a>: {esc(d)}</li>' for t, q, d in BOOKS)
     bw_faq = [("What is the Babywise method?", "Babywise is a parent-directed routine from the book On Becoming Babywise by Gary Ezzo and Robert Bucknam, MD. Each part of the day follows the same order: feed, waketime, then sleep. Feeds are spaced roughly 2.5 to 3 hours apart in the early weeks, and feeds gradually merge as the baby grows."),
@@ -477,29 +537,31 @@ def build():
     calc_faq = [("How does the Babywise calculator work?", "For babies under 12 months, it lays out eat-wake-sleep cycles from your first feed of the day, using the feed spacing and number of naps described in On Becoming Babywise for your baby's age. For toddlers, it uses typical awake times and nap lengths."),
                 ("What if my baby is hungry early?", "Feed your baby. The times are a plan for the day, not a rule. Babywise itself says to feed a hungry baby, and the AAP recommends feeding on hunger cues."),
                 ("What if a nap runs short or long?", "Start the next feed at about the planned time if you can, or shift the rest of the day by the same amount. Consistency over several days matters more than any single nap.")]
-    body = f"""<h1>Babywise-style schedule calculator</h1>
-<p class="lead">Pick your baby's age and the time of the first feed. You'll get a full eat-wake-sleep day based on Babywise, or a nap plan for toddlers.</p>
-<div class="card">
-<label for="age">Baby's age</label><select id="age">{opts}</select>
-<label for="wake" id="wake-label">First feed of the day</label><input type="time" id="wake" value="07:00">
+    body = f"""<p class="eyebrow">Free calculator</p><h1>Plan your baby's day</h1>
+<p class="lead">Pick an age and the first feed of the morning. You'll get a full Babywise-style eat-wake-sleep day, or a nap plan for toddlers.</p>
+<div class="card calc">
+<div class="fields"><div><label for="age">Baby's age</label><select id="age">{opts}</select></div>
+<div><label for="wake" id="wake-label">First feed of the day</label><input type="time" id="wake" value="07:00"></div></div>
 <p><button class="btn" id="go" type="button">Build my schedule</button></p>
 <div id="out" aria-live="polite"></div>
 </div>
 {INSTALL_HINT}
 <script>
-const D={json.dumps(calc_data)};
+const D={json.dumps(calc_data)};const LG={json.dumps(LEGEND)};
 function f(m){{m=((m%1440)+1440)%1440;let h=Math.floor(m/60),mm=m%60,ap=h<12?'AM':'PM';h=h%12||12;return h+':'+String(mm).padStart(2,'0')+' '+ap}}
 function d(m){{const h=Math.floor(m/60),x=m%60;return (h?h+' hr'+(h>1?'s':''):'')+(h&&x?' ':'')+(x?x+' min':'')}}
-function row(a,b){{return '<tr><td>'+a+'</td><td>'+b+'</td></tr>'}}
+function k(b){{const t=b.toLowerCase();if(t.includes('down for the night')||(t.startsWith('bedtime')&&!t.includes('feed'))||t.includes('bedtime routine'))return 'night';if(/^(nap|catnap|evening sleep|quiet)/.test(t))return 'nap';if(/feed|milk|breakfast|lunch|snack|dinner/.test(t))return 'feed';if(/nap|sleep|quiet time/.test(t))return 'nap';return 'wake'}}
+function rg(a,b){{const x=f(a),y=f(b);return x.slice(-2)===y.slice(-2)?x.slice(0,-3)+'–'+y:x+'–'+y}}
+function row(a,b){{return '<tr class="'+k(b)+'"><td>'+a+'</td><td>'+b+'</td></tr>'}}
 function run(){{const a=D[document.getElementById('age').value];const v=document.getElementById('wake').value||'07:00';let [h,m]=v.split(':').map(Number);const s0=h*60+m;let t=s0;
 document.getElementById('wake-label').textContent=a.bw?'First feed of the day':'Woke up at';
-let r='<table><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>';
+let r='<table class="tl"><thead><tr><th>Time</th><th>What happens</th></tr></thead><tbody>';
 if(a.bw){{a.cycles.forEach((c,i)=>{{const [off,lab,wk,nap]=c;const ft=s0+off;r+=row(f(ft),lab+(nap&&nap!=='night'?' and waketime':''));
-if(nap==='night')r+=row(f(ft+wk),'Down for the night');else if(nap)r+=row(nap.startsWith('Catnap')?f(ft+wk):f(ft+wk)+' – '+f(s0+a.cycles[i+1][0]),nap)}});
-a.night.forEach(n=>{{r+=row(f(s0+n[0]),n[1])}});r+='</tbody></table>';
+if(nap==='night')r+=row(f(ft+wk),'Down for the night');else if(nap)r+=row(nap.startsWith('Catnap')?f(ft+wk):rg(ft+wk,s0+a.cycles[i+1][0]),nap)}});
+a.night.forEach(n=>{{r+=row(f(s0+n[0]),n[1])}});r+='</tbody></table>'+LG;
 r+='<p>Feed times are a guide. If your baby is hungry sooner, feed them. <a href="'+a.path+'">See the full '+a.label+' schedule →</a></p>'}}
-else{{r+=row(f(t),'Wake up');a.naps.forEach((n,i)=>{{t+=a.ww[i];r+=row(f(t)+' – '+f(t+n),'Nap '+(i+1)+' (about '+d(n)+')');t+=n}});
-t+=a.ww[a.naps.length];r+=row(f(t),'Bedtime')+'</tbody></table>';
+else{{r+=row(f(t),'Wake up');a.naps.forEach((n,i)=>{{t+=a.ww[i];r+=row(rg(t,t+n),'Nap '+(i+1)+' (about '+d(n)+')');t+=n}});
+t+=a.ww[a.naps.length];r+=row(f(t),'Bedtime')+'</tbody></table>'+LG;
 r+='<p>These are estimates. Watch for sleepy cues and adjust by 15 minutes or so. <a href="'+a.path+'">See the full '+a.label+' guide →</a></p>'}}
 document.getElementById('out').innerHTML=r}}
 const OLD={{"newborn":"bw-1-2w","2-3m":"bw-8-12w","4-5m":"bw-16-24w","6-7m":"bw-25-38w","8-10m":"bw-39-52w"}};
@@ -555,15 +617,15 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 <h2>Children</h2><p>This site is written for parents and caregivers and is not directed to children under 13.</p>"""))
 
     # Home
-    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/">{esc(st["label"])}<small>Naps: {st["naps"]}</small></a></li>' for st in BW_STAGES)
-    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/">{esc(a["label"])}<small>Naps: {a["naps_count"]}</small></a></li>' for a in TODDLERS)
+    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span>{esc(st["label"].split(" (")[0])}<small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
+    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/"><span class="chip">Toddler</span>{esc(a["label"])}<small>{a["naps_count"]} {"nap" if a["naps_count"] == "1" else "naps"} a day</small></a></li>' for a in TODDLERS)
     ggrid = "".join(f'<li><a href="/guides/{g["slug"]}/">{esc(g["h1"])}</a></li>' for g in GUIDES)
     home_faq = [("What is a Babywise schedule?", "A Babywise schedule follows the routine from On Becoming Babywise: the day repeats in feed, waketime, sleep cycles, with feeds about 2.5 to 3 hours apart in the early weeks and fewer, fuller feeds as the baby grows."),
                 ("How many naps does a Babywise baby take?", "According to the book, about 5 to 6 naps in the first weeks, 4 to 5 around 2 to 3 months, 3 to 4 from about 3 to 6 months, 2 to 3 from 6 to 9 months, and 2 by 9 to 12 months."),
                 ("When do toddlers drop to one nap?", "Most toddlers move from two naps to one between 13 and 18 months.")]
-    body = f"""<h1>Babywise schedules, made simple</h1>
+    body = f"""<section class="hero"><h1>Babywise schedules, made simple</h1>
 <p class="lead">Eat-wake-sleep routines for every stage of the first year, toddler nap schedules to age 5, and a free calculator that builds your baby's day from the first feed.</p>
-<p><a class="btn" href="/nap-calculator/">Open the eat-wake-sleep calculator</a></p>
+<p><a class="btn" href="/nap-calculator/">Plan my baby's day</a></p></section>
 <h2>Babywise schedules: birth to 12 months</h2><ul class="grid">{bgrid}</ul>
 <p><a href="/babywise/">New to Babywise? Start here →</a></p>
 {ad_slot()}
