@@ -192,7 +192,7 @@ def gear_box(n=3):
 BW_NOTE = ('<p class="note"><strong>About Babywise and feeding schedules:</strong> The American Academy of Pediatrics recommends feeding babies '
            'when they show hunger cues, and in 1998 it raised concerns that strict schedule-based feeding can lead to poor weight gain, '
            'dehydration and low milk supply. If you use a Babywise-style routine, treat feeding times as flexible, feed your baby whenever '
-           'they are hungry, and keep up with weight checks at your pediatrician. NapSchedule is not affiliated with the Babywise authors or publisher.</p>')
+           'they are hungry, and keep up with weight checks at your pediatrician.</p>')
 
 
 # Old 0-12 month wake-window pages now forward to the matching Babywise stage.
@@ -227,6 +227,11 @@ def bw_rows(st, first=7 * 60):
     for off, label in st["night"]:
         rows.append((first + off, fmt_time(first + off), label))
     return [(a, b) for _, a, b in rows]
+
+
+BABYWISE_TM = ('<p class="note"><strong>Trademark and affiliation:</strong> Babywise and the titles of the Babywise books are trademarks of their respective owners. '
+               'NapSchedule.com is an independent site. It is not affiliated with, sponsored by or endorsed by Gary Ezzo, Robert Bucknam, MD, or their publisher. '
+               'We refer to the books by name only to describe and review them, and our schedules are our own summaries, not text or charts from the books.</p>')
 
 
 DISCLAIMER = '<p class="note">This site shares general information, not medical advice. Every child is different. Talk with your pediatrician about your child\'s sleep, especially if you have concerns about health, growth, or breathing.</p>'
@@ -266,7 +271,7 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Babywise Day">
+<meta name="apple-mobile-web-app-title" content="Nap Day">
 {adsense_head}{ld_html}
 </head><body>
 <header class="site"><div class="wrap"><a class="logo" href="/">Nap<span>Schedule</span></a>
@@ -275,7 +280,7 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 {body}
 </div></main>
 <footer><div class="wrap"><a href="/about/">About</a><a href="/privacy/">Privacy</a><a href="/disclaimer/">Disclaimer</a><a href="/nap-gear/">Nap gear</a>
-<p>© {datetime.date.today().year} NapSchedule.com · General information only, not medical advice.</p></div></footer>
+<p>© {datetime.date.today().year} NapSchedule.com · General information only, not medical advice. Babywise is a trademark of its owners; this site is independent and not affiliated with or endorsed by the Babywise authors or publisher.</p></div></footer>
 {SW_REGISTER}
 </body></html>"""
     if path.endswith(".html"):
@@ -405,7 +410,7 @@ def build():
             pn += f'<a href="/babywise/{BW_STAGES[i-1]["slug"]}/">← {esc(BW_STAGES[i-1]["label"])}</a>'
         if i + 1 < len(BW_STAGES):
             pn += f'<a style="float:right" href="/babywise/{BW_STAGES[i+1]["slug"]}/">{esc(BW_STAGES[i+1]["label"])} →</a>'
-        body = f"""<h1>Babywise schedule: {esc(st['label'])}</h1>
+        body = f"""<h1>Babywise-style schedule: {esc(st['label'])}</h1>
 <p class="lead">{esc(st['desc'])}</p>
 <table class="glance"><tbody>
 <tr><td>Naps per day</td><td>{st['naps']}</td></tr>
@@ -422,6 +427,7 @@ def build():
 <h2>Tips for this stage</h2><ul>{tips}</ul>
 {gear_box()}
 {BW_NOTE}
+{BABYWISE_TM}
 {DISCLAIMER}
 <p>{pn}</p>"""
         pages.append(page(path, st["title"], st["desc"], body, schema=[article_schema(st["title"], st["desc"], path)],
@@ -453,6 +459,7 @@ def build():
 <p><a class="btn" href="/nap-calculator/?method=bw">Build a Babywise day in the calculator</a></p>
 {faq_html(bw_faq)}
 {BW_NOTE}
+{BABYWISE_TM}
 {DISCLAIMER}"""
     pages.append(page("/babywise/", "Babywise Schedule by Age: Eat-Wake-Sleep Routines 0–12 Months",
                       "Babywise-style eat-wake-sleep schedules from birth to 12 months: feeds, waketimes, naps and sample days, based on On Becoming Babywise.",
@@ -470,7 +477,7 @@ def build():
     calc_faq = [("How does the Babywise calculator work?", "For babies under 12 months, it lays out eat-wake-sleep cycles from your first feed of the day, using the feed spacing and number of naps described in On Becoming Babywise for your baby's age. For toddlers, it uses typical awake times and nap lengths."),
                 ("What if my baby is hungry early?", "Feed your baby. The times are a plan for the day, not a rule. Babywise itself says to feed a hungry baby, and the AAP recommends feeding on hunger cues."),
                 ("What if a nap runs short or long?", "Start the next feed at about the planned time if you can, or shift the rest of the day by the same amount. Consistency over several days matters more than any single nap.")]
-    body = f"""<h1>Babywise schedule calculator</h1>
+    body = f"""<h1>Babywise-style schedule calculator</h1>
 <p class="lead">Pick your baby's age and the time of the first feed. You'll get a full eat-wake-sleep day based on Babywise, or a nap plan for toddlers.</p>
 <div class="card">
 <label for="age">Baby's age</label><select id="age">{opts}</select>
@@ -506,10 +513,11 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 <p>New to the routine? Read <a href="/babywise/">how Babywise works</a>.</p>
 {faq_html(calc_faq)}
 {BW_NOTE}
+{BABYWISE_TM}
 {DISCLAIMER}"""
-    pages.append(page("/nap-calculator/", "Babywise Schedule Calculator: Eat-Wake-Sleep Day Planner",
+    pages.append(page("/nap-calculator/", "Babywise-Style Schedule Calculator: Eat-Wake-Sleep Day Planner",
                       "Free Babywise schedule calculator: enter your baby's age and first feed time to get feed, waketime and nap times for the day, plus toddler nap plans.",
-                      body, schema=[faq_schema(calc_faq), {"@context": "https://schema.org", "@type": "WebApplication", "name": "Babywise Schedule Calculator",
+                      body, schema=[faq_schema(calc_faq), {"@context": "https://schema.org", "@type": "WebApplication", "name": "Eat-Wake-Sleep Schedule Calculator",
                                                           "url": SITE + "/nap-calculator/", "applicationCategory": "LifestyleApplication",
                                                           "operatingSystem": "Any", "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}}],
                       crumbs=[H, ("Nap calculator", "/nap-calculator/")]))
@@ -536,6 +544,7 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 <p>We keep the site free with advertising and affiliate links. See our <a href="/privacy/">privacy policy</a> and <a href="/disclaimer/">disclaimer</a>.</p>""" + DISCLAIMER))
     pages.append(page("/disclaimer/", "Disclaimer", "Medical and affiliate disclaimer for NapSchedule.com.",
                       """<h1>Disclaimer</h1><h2>Not medical advice</h2><p>The content on NapSchedule.com is for general informational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment. Always ask your pediatrician or another qualified health provider about your child's health and sleep. If you think your child may have a medical emergency, call your doctor or emergency services immediately.</p>
+<h2>Babywise</h2><p>Babywise and the titles of the Babywise books are trademarks of their respective owners. NapSchedule.com is an independent site and is not affiliated with, sponsored by or endorsed by Gary Ezzo, Robert Bucknam, MD, or their publisher. We mention the books by name to describe and review them. Our "Babywise-style" schedules are our own summaries of the general approach and are not reproduced from the books. For the authors' own guidance, read the books.</p><p>Following any feeding or sleep routine, including a Babywise-style routine, is your decision. Feed your baby whenever they show hunger, watch their weight gain and diapers, and follow your pediatrician's advice over anything on this site. We accept no liability for how the information here is used.</p>
 <h2>Affiliate disclosure</h2><p>NapSchedule.com is a participant in the Amazon Services LLC Associates Program, an affiliate advertising program designed to provide a means for sites to earn advertising fees by advertising and linking to Amazon.com. As an Amazon Associate we earn from qualifying purchases. This doesn't change the price you pay.</p>"""))
     pages.append(page("/privacy/", "Privacy Policy", "Privacy policy for NapSchedule.com.",
                       f"""<h1>Privacy policy</h1><p>Last updated: {TODAY}</p>
@@ -554,7 +563,7 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
                 ("When do toddlers drop to one nap?", "Most toddlers move from two naps to one between 13 and 18 months.")]
     body = f"""<h1>Babywise schedules, made simple</h1>
 <p class="lead">Eat-wake-sleep routines for every stage of the first year, toddler nap schedules to age 5, and a free calculator that builds your baby's day from the first feed.</p>
-<p><a class="btn" href="/nap-calculator/">Open the Babywise calculator</a></p>
+<p><a class="btn" href="/nap-calculator/">Open the eat-wake-sleep calculator</a></p>
 <h2>Babywise schedules: birth to 12 months</h2><ul class="grid">{bgrid}</ul>
 <p><a href="/babywise/">New to Babywise? Start here →</a></p>
 {ad_slot()}
@@ -563,6 +572,7 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 {gear_box()}
 {faq_html(home_faq)}
 {BW_NOTE}
+{BABYWISE_TM}
 {DISCLAIMER}"""
     pages.append(page("/", "Babywise Schedule by Age + Calculator | NapSchedule",
                       "Babywise eat-wake-sleep schedules from birth to 12 months, toddler nap schedules to age 5, and a free Babywise schedule calculator.",
@@ -580,8 +590,8 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
     shutil.copytree("static/icons", os.path.join(OUT, "icons"))
     shutil.copy("static/icon.svg", os.path.join(OUT, "icons", "icon.svg"))
     manifest = {
-        "name": "Babywise Schedule Calculator by NapSchedule", "short_name": "Babywise Day",
-        "description": "Plan your baby's eat-wake-sleep day by age, based on Babywise, plus toddler nap times.",
+        "name": "NapSchedule Eat-Wake-Sleep Planner", "short_name": "Nap Day",
+        "description": "Plan your baby's eat-wake-sleep day by age, plus toddler nap times.",
         "id": "/nap-calculator/", "start_url": "/nap-calculator/?source=pwa", "scope": "/",
         "display": "standalone", "background_color": "#fbf8f3", "theme_color": "#3d5a80",
         "icons": [

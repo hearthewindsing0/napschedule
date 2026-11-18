@@ -1,7 +1,7 @@
 {
- "name": "Babywise Schedule Calculator by NapSchedule",
- "short_name": "Babywise Day",
- "description": "Plan your baby's eat-wake-sleep day by age, based on Babywise, plus toddler nap times.",
+ "name": "NapSchedule Eat-Wake-Sleep Planner",
+ "short_name": "Nap Day",
+ "description": "Plan your baby's eat-wake-sleep day by age, plus toddler nap times.",
  "id": "/nap-calculator/",
  "start_url": "/nap-calculator/?source=pwa",
  "scope": "/",
