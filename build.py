@@ -599,7 +599,7 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
     with open(os.path.join(OUT, "sw.js"), "w") as f:
         f.write(SW.replace("__VERSION__", version).replace("__PRECACHE__", json.dumps(sorted(set(precache)))))
     with open(os.path.join(OUT, "CNAME"), "w") as f:
-        f.write("napschedule.com\n")
+        f.write("napschedule.com")
     with open(os.path.join(OUT, ".nojekyll"), "w") as f:
         f.write("")
     with open(os.path.join(OUT, "robots.txt"), "w") as f:
