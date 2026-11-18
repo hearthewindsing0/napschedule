@@ -1,6 +1,6 @@
 // Offline support: same-origin only, so ad and affiliate requests are never cached.
-const CACHE = 'nap-460642bef6';
-const PRECACHE = ["/", "/babywise/", "/babywise/babywise-schedule-6-9-months/", "/babywise/babywise-schedule-9-12-months/", "/babywise/babywise-schedule-weeks-1-2/", "/babywise/babywise-schedule-weeks-13-15/", "/babywise/babywise-schedule-weeks-16-24/", "/babywise/babywise-schedule-weeks-3-5/", "/babywise/babywise-schedule-weeks-6-7/", "/babywise/babywise-schedule-weeks-8-12/", "/favicon.svg", "/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png", "/manifest.webmanifest", "/nap-calculator/", "/schedules/", "/schedules/11-14-month-nap-schedule/", "/schedules/15-18-month-nap-schedule/", "/schedules/19-24-month-nap-schedule/", "/schedules/2-3-year-old-nap-schedule/", "/schedules/3-5-year-old-nap-schedule/", "/style.css"];
+const CACHE = 'nap-1287c32775';
+const PRECACHE = ["/", "/babywise/", "/babywise/babywise-schedule-6-9-months/", "/babywise/babywise-schedule-9-12-months/", "/babywise/babywise-schedule-weeks-1-2/", "/babywise/babywise-schedule-weeks-13-15/", "/babywise/babywise-schedule-weeks-16-24/", "/babywise/babywise-schedule-weeks-3-5/", "/babywise/babywise-schedule-weeks-6-7/", "/babywise/babywise-schedule-weeks-8-12/", "/favicon.svg", "/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png", "/manifest.webmanifest", "/nap-calculator/", "/schedules/", "/schedules/11-14-month-nap-schedule/", "/schedules/15-18-month-nap-schedule/", "/schedules/19-24-month-nap-schedule/", "/schedules/2-3-year-old-nap-schedule/", "/schedules/3-5-year-old-nap-schedule/", "/style.css?v=c2d86e8c"];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
@@ -19,8 +19,12 @@ self.addEventListener('fetch', e => {
     }).catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match('/nap-calculator/'))));
     return;
   }
-  e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => {
-    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
-    return res;
-  })));
+  // Stale-while-revalidate for assets: serve the cached copy, refresh it in the background.
+  e.respondWith(caches.match(req).then(cached => {
+    const net = fetch(req).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+      return res;
+    }).catch(() => cached);
+    return cached || net;
+  }));
 });

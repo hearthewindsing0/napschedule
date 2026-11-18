@@ -130,6 +130,9 @@ th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);vert
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;padding:0;margin:0;list-style:none}
 .grid a{display:flex;flex-direction:column;align-items:flex-start;height:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 18px;text-decoration:none;font-weight:650;color:var(--ink);box-shadow:var(--shadow);transition:transform .15s,border-color .15s}
 .grid a:hover{transform:translateY(-2px);border-color:var(--accent)}
+.grid.g4{grid-template-columns:repeat(4,1fr)}.grid.g5{grid-template-columns:repeat(5,1fr)}.grid.g5 a{padding:13px 14px}
+.grid .t{white-space:nowrap}.grid .chip{white-space:nowrap}
+@media(max-width:760px){.grid.g4,.grid.g5{grid-template-columns:1fr 1fr}.grid.g4>li:last-child:nth-child(odd),.grid.g5>li:last-child:nth-child(odd){grid-column:1/-1}}
 .grid a small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
 .btn{display:inline-block;background:var(--brand);color:var(--brand-ink);padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:700;border:0;cursor:pointer;font-size:1rem;box-shadow:0 2px 8px color-mix(in srgb,var(--brand) 35%,transparent)}
 .btn:hover{filter:brightness(1.08);color:var(--brand-ink)}
@@ -152,7 +155,7 @@ select:focus,input:focus,.btn:focus-visible,a:focus-visible{outline:3px solid co
 .install{border-color:var(--accent);background:var(--accent-soft)}.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font-size:.95rem}
 footer{border-top:1px solid var(--line);background:var(--bg2);font-size:.88rem;color:var(--muted);padding:26px 0 34px}
 footer a{color:var(--muted);margin-right:16px}
-@media(max-width:600px){body{font-size:16.5px}.grid{grid-template-columns:1fr 1fr;gap:10px}.grid a{padding:12px 14px;font-size:.95rem}.stats{grid-template-columns:1fr 1fr}.tl td:first-child{white-space:normal;width:38%}h1{font-size:1.85rem}h2{font-size:1.32rem}.hero{padding:22px 18px;border-radius:18px}.fields{grid-template-columns:1fr}
+@media(max-width:600px){body{font-size:16.5px}.grid{grid-template-columns:1fr 1fr;gap:10px}.grid>li:last-child:nth-child(odd){grid-column:1/-1}.grid a{padding:12px 14px;font-size:.95rem}.stats{grid-template-columns:1fr 1fr}.tl td:first-child{white-space:normal;width:38%}h1{font-size:1.85rem}h2{font-size:1.32rem}.hero{padding:22px 18px;border-radius:18px}.fields{grid-template-columns:1fr}
 header.site .wrap{flex-wrap:wrap;padding-top:8px;padding-bottom:6px;gap:4px}nav{width:100%;margin:0 -10px}th,td{padding:10px 11px}.tl td:last-child{padding-left:30px}.tl td:last-child:before{left:11px}}
 """
 
@@ -178,10 +181,14 @@ self.addEventListener('fetch', e => {
     }).catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match('/nap-calculator/'))));
     return;
   }
-  e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => {
-    if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
-    return res;
-  })));
+  // Stale-while-revalidate for assets: serve the cached copy, refresh it in the background.
+  e.respondWith(caches.match(req).then(cached => {
+    const net = fetch(req).then(res => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
+      return res;
+    }).catch(() => cached);
+    return cached || net;
+  }));
 });
 """
 
@@ -211,6 +218,9 @@ addEventListener('appinstalled',function(){box.hidden=true});
 
 AGE_HINT = {"bw-1-2w": "Newborn", "bw-3-5w": "About 1 month", "bw-6-7w": "About 6 weeks", "bw-8-12w": "2–3 months",
             "bw-13-15w": "About 3 months", "bw-16-24w": "4–5 months", "bw-25-38w": "6–9 months", "bw-39-52w": "9–12 months"}
+
+
+CSS_VER = hashlib.sha1(CSS.encode()).hexdigest()[:8]
 
 
 def kind(text):
@@ -321,7 +331,7 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap">
-<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style.css?v={CSS_VER}">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#12151f" media="(prefers-color-scheme: dark)">
 <link rel="apple-touch-icon" href="/icons/icon-180.png">
@@ -423,16 +433,16 @@ def build():
                           crumbs=[H, ("Schedules by age", "/schedules/"), (a["label"], path)]))
 
     # Schedules hub
-    bgrid0 = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span>{esc(st["label"].split(" (")[0])}<small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
-    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/"><span class="chip">Toddler</span>{esc(a["label"])}<small>{a["naps_count"]} {"nap" if a["naps_count"] == "1" else "naps"} a day</small></a></li>' for a in TODDLERS)
+    bgrid0 = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span> <span class="t">{esc(st["label"].split(" (")[0])}</span><small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
+    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/"><span class="chip">Toddler</span> <span class="t">{esc(a["label"])}</span><small>{a["naps_count"].split(" (")[0]} {"nap" if a["naps_count"] == "1" else "naps"} a day</small></a></li>' for a in TODDLERS)
     summary = "".join(f'<tr><td><a href="/schedules/{a["slug"]}/">{esc(a["label"])}</a></td><td>{a["naps_count"]}</td><td>{a["ww_range"]}</td><td>{a["total"]}</td></tr>' for a in TODDLERS)
     body = f"""<h1>Nap schedules by age</h1>
 <p class="lead">Babywise eat-wake-sleep schedules for the first year, then toddler nap schedules up to age 5.</p>
 <h2>Birth to 12 months: Babywise schedules</h2>
-<ul class="grid">{bgrid0}</ul>
+<ul class="grid g4">{bgrid0}</ul>
 <p><a href="/babywise/">How the Babywise routine works →</a></p>
 <h2>12 months to 5 years: toddler naps</h2>
-<ul class="grid">{grid}</ul>
+<ul class="grid g5">{grid}</ul>
 <table><thead><tr><th>Age</th><th>Naps</th><th>Time awake between sleeps</th><th>Total sleep / 24h</th></tr></thead><tbody>{summary}</tbody></table>
 <p><small>First-year schedules are summarized from {esc(BOOK)}. Toddler sleep totals follow the American Academy of Sleep Medicine recommendations endorsed by the American Academy of Pediatrics.</small></p>
 {DISCLAIMER}"""
@@ -454,7 +464,7 @@ def build():
                           crumbs=[H, ("Guides", "/guides/"), (g["h1"], path)]))
     grid = "".join(f'<li><a href="/guides/{g["slug"]}/">{esc(g["h1"])}<small>{esc(g["desc"][:90])}…</small></a></li>' for g in GUIDES)
     pages.append(page("/guides/", "Baby & Toddler Nap Guides", "Practical guides to wake windows, sleep regressions, nap transitions, short naps, and safe sleep.",
-                      f'<h1>Nap guides</h1><p class="lead">Short, practical guides for the trickiest parts of naps.</p><ul class="grid">{grid}</ul>',
+                      f'<h1>Nap guides</h1><p class="lead">Short, practical guides for the trickiest parts of naps.</p><ul class="grid g4">{grid}</ul>',
                       crumbs=[H, ("Guides", "/guides/")]))
 
     # Babywise section
@@ -492,7 +502,7 @@ def build():
 <p>{pn}</p>"""
         pages.append(page(path, st["title"], st["desc"], body, schema=[article_schema(st["title"], st["desc"], path)],
                           crumbs=[H, BWH, (st["label"], path)]))
-    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span>{esc(st["label"].split(" (")[0])}<small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
+    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span> <span class="t">{esc(st["label"].split(" (")[0])}</span><small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
     btab = "".join(f'<tr><td><a href="/babywise/{st["slug"]}/">{esc(st["label"])}</a></td><td>{st["naps"]}</td><td>{st["sleep"]}</td><td>{esc(st["feeds"])}</td></tr>' for st in BW_STAGES)
     books = "".join(f'<li><a href="{esc(amazon_url(q))}" rel="sponsored nofollow noopener" target="_blank">{esc(t)}</a>: {esc(d)}</li>' for t, q, d in BOOKS)
     bw_faq = [("What is the Babywise method?", "Babywise is a parent-directed routine from the book On Becoming Babywise by Gary Ezzo and Robert Bucknam, MD. Each part of the day follows the same order: feed, waketime, then sleep. Feeds are spaced roughly 2.5 to 3 hours apart in the early weeks, and feeds gradually merge as the baby grows."),
@@ -500,7 +510,7 @@ def build():
               ("Is Babywise safe?", "The AAP recommends feeding on hunger cues and has warned that rigid schedules can cause poor weight gain and low milk supply. If you follow a Babywise-style routine, keep it flexible, feed your baby when hungry, and track weight gain with your pediatrician.")]
     body = f"""<h1>Babywise schedules by age</h1>
 <p class="lead">Eat-wake-sleep routines from birth to 12 months, based on <em>On Becoming Babywise</em>. Pick your baby's age for feed times, naps and a sample day.</p>
-<ul class="grid">{bgrid}</ul>
+<ul class="grid g4">{bgrid}</ul>
 <h2>How the Babywise routine works</h2>
 <p>Babywise organizes the day into repeating <strong>feed, waketime, sleep</strong> cycles. Instead of feeding a baby to sleep, you feed after they wake, enjoy some awake time, then put them down for a nap. The authors call this parent-directed feeding: the parent sets a rhythm, while still watching the baby's hunger cues.</p>
 <p>Over the first year, feeds gradually <strong>merge</strong>. Night feeds go first, then the late-evening feed, then a daytime feed as solids arrive, until your baby is eating family meals with two naps a day.</p>
@@ -617,8 +627,8 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
 <h2>Children</h2><p>This site is written for parents and caregivers and is not directed to children under 13.</p>"""))
 
     # Home
-    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span>{esc(st["label"].split(" (")[0])}<small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
-    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/"><span class="chip">Toddler</span>{esc(a["label"])}<small>{a["naps_count"]} {"nap" if a["naps_count"] == "1" else "naps"} a day</small></a></li>' for a in TODDLERS)
+    bgrid = "".join(f'<li><a href="/babywise/{st["slug"]}/"><span class="chip">{esc(AGE_HINT[st["key"]])}</span> <span class="t">{esc(st["label"].split(" (")[0])}</span><small>{st["naps"]} {"nap" if st["naps"] == "1" else "naps"} a day</small></a></li>' for st in BW_STAGES)
+    grid = "".join(f'<li><a href="/schedules/{a["slug"]}/"><span class="chip">Toddler</span> <span class="t">{esc(a["label"])}</span><small>{a["naps_count"].split(" (")[0]} {"nap" if a["naps_count"] == "1" else "naps"} a day</small></a></li>' for a in TODDLERS)
     ggrid = "".join(f'<li><a href="/guides/{g["slug"]}/">{esc(g["h1"])}</a></li>' for g in GUIDES)
     home_faq = [("What is a Babywise schedule?", "A Babywise schedule follows the routine from On Becoming Babywise: the day repeats in feed, waketime, sleep cycles, with feeds about 2.5 to 3 hours apart in the early weeks and fewer, fuller feeds as the baby grows."),
                 ("How many naps does a Babywise baby take?", "According to the book, about 5 to 6 naps in the first weeks, 4 to 5 around 2 to 3 months, 3 to 4 from about 3 to 6 months, 2 to 3 from 6 to 9 months, and 2 by 9 to 12 months."),
@@ -626,11 +636,11 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
     body = f"""<section class="hero"><h1>Babywise schedules, made simple</h1>
 <p class="lead">Eat-wake-sleep routines for every stage of the first year, toddler nap schedules to age 5, and a free calculator that builds your baby's day from the first feed.</p>
 <p><a class="btn" href="/nap-calculator/">Plan my baby's day</a></p></section>
-<h2>Babywise schedules: birth to 12 months</h2><ul class="grid">{bgrid}</ul>
+<h2>Babywise schedules: birth to 12 months</h2><ul class="grid g4">{bgrid}</ul>
 <p><a href="/babywise/">New to Babywise? Start here →</a></p>
 {ad_slot()}
-<h2>Toddler nap schedules</h2><ul class="grid">{grid}</ul>
-<h2>Guides</h2><ul class="grid">{ggrid}</ul>
+<h2>Toddler nap schedules</h2><ul class="grid g5">{grid}</ul>
+<h2>Guides</h2><ul class="grid g4">{ggrid}</ul>
 {gear_box()}
 {faq_html(home_faq)}
 {BW_NOTE}
@@ -665,7 +675,7 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
     }
     with open(os.path.join(OUT, "manifest.webmanifest"), "w") as f:
         json.dump(manifest, f, indent=1)
-    precache = ["/", "/nap-calculator/", "/schedules/", "/style.css", "/favicon.svg", "/manifest.webmanifest",
+    precache = ["/", "/nap-calculator/", "/schedules/", f"/style.css?v={CSS_VER}", "/favicon.svg", "/manifest.webmanifest",
                 "/icons/icon-192.png", "/icons/icon-512.png", "/icons/icon-180.png"] + [p for p in pages if p.startswith(("/schedules/", "/babywise/"))]
     version = hashlib.sha1("".join(open(os.path.join(dp, fn), "rb").read().hex() for dp, _, fns in sorted(os.walk(OUT)) for fn in sorted(fns)).encode()).hexdigest()[:10]
     with open(os.path.join(OUT, "sw.js"), "w") as f:
