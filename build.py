@@ -10,6 +10,7 @@ from content_babywise import BW_STAGES, BOOK
 
 # ---- Monetization config -------------------------------------------------
 AMAZON_TAG = ""        # Amazon Associates tracking ID, e.g. "napschedule-20"
+GA_ID = ""             # Google Analytics 4 measurement ID, e.g. "G-ABC123XYZ9"
 ADSENSE_CLIENT = ""    # AdSense publisher ID, e.g. "ca-pub-1234567890123456"
 # --------------------------------------------------------------------------
 
@@ -239,6 +240,19 @@ def kind(text):
 LEGEND = '<div class="legend"><span><i style="background:var(--feed)"></i>Feed or meal</span><span><i style="background:var(--wake)"></i>Awake</span><span><i style="background:var(--nap)"></i>Nap</span><span><i style="background:var(--night)"></i>Night</span></div>'
 
 
+def ga_head():
+    """GA4 tag plus two events: calculator use and affiliate (Amazon) clicks."""
+    if not GA_ID:
+        return ""
+    return (f'<script async src="https://www.googletagmanager.com/gtag/js?id={GA_ID}"></script>'
+            "<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());"
+            f"gtag('config','{GA_ID}');"
+            "document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[rel~=sponsored]');"
+            "if(a)gtag('event','affiliate_click',{link_url:a.href,link_text:(a.textContent||'').trim().slice(0,80)});"
+            "var b=e.target.closest&&e.target.closest('#go');if(b){var s=document.getElementById('age');gtag('event','calculator_use',{age:s?s.value:''})}});"
+            "</script>")
+
+
 def ad_slot():
     if not ADSENSE_CLIENT:
         return "<!-- ad slot: set ADSENSE_CLIENT in build.py -->"
@@ -339,7 +353,7 @@ def page(path, title, desc, body, schema=None, crumbs=None):
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Nap Day">
-{adsense_head}{ld_html}
+{ga_head()}{adsense_head}{ld_html}
 </head><body>
 <header class="site"><div class="wrap"><a class="logo" href="/"><svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#2f4a75"/><path d="M37 15a17 17 0 1 0 12 28A15 15 0 0 1 37 15z" fill="#e3a564"/></svg><span class="wm">Nap<b>Schedule</b></span></a>
 <nav><a href="/schedules/">By age</a><a href="/babywise/">Babywise</a><a href="/nap-calculator/">Calculator</a><a href="/guides/">Guides</a></nav></div></header>
@@ -622,6 +636,7 @@ document.getElementById('go').addEventListener('click',run);document.getElementB
                       f"""<h1>Privacy policy</h1><p>Last updated: {TODAY}</p>
 <p>NapSchedule.com does not ask you to create an account and does not collect personal information through forms. The nap calculator runs entirely in your browser; the age and times you enter are not sent to us.</p>
 <h2>Advertising</h2><p>We may use third-party advertising companies, such as Google AdSense, to serve ads. These companies may use cookies to serve ads based on your prior visits to this and other websites. Google's use of advertising cookies enables it and its partners to serve ads based on your visits to this site and/or other sites on the Internet. You may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" rel="noopener" target="_blank">Google Ads Settings</a>. Learn more at <a href="https://policies.google.com/technologies/partner-sites" rel="noopener" target="_blank">how Google uses information from sites that use its services</a>.</p>
+{('<h2>Analytics</h2><p>We use Google Analytics to understand how visitors use the site, such as which pages are viewed, how long visits last, and whether the calculator and product links are used. Google Analytics uses cookies and collects information such as your approximate location, device and browser. It does not tell us who you are. Learn how Google uses this data at <a href="https://policies.google.com/technologies/partner-sites" rel="noopener" target="_blank">Google\'s partner sites policy</a>, or opt out with the <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener" target="_blank">Google Analytics opt-out add-on</a>.</p>' if GA_ID else '')}
 <h2>Affiliate links</h2><p>Some links go to Amazon. If you buy through them, Amazon may use cookies to attribute the purchase to us. See the <a href="/disclaimer/">disclaimer</a>.</p>
 <h2>Hosting</h2><p>This site is hosted on GitHub Pages, which may log basic technical information such as IP addresses for security purposes.</p>
 <h2>Children</h2><p>This site is written for parents and caregivers and is not directed to children under 13.</p>"""))
