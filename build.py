@@ -10,7 +10,7 @@ from content_babywise import BW_STAGES, BOOK
 
 # ---- Monetization config -------------------------------------------------
 AMAZON_TAG = ""        # Amazon Associates tracking ID, e.g. "napschedule-20"
-GA_ID = ""             # Google Analytics 4 measurement ID, e.g. "G-ABC123XYZ9"
+GA_ID = "G-7PK3Z0GS8W"             # Google Analytics 4 measurement ID, e.g. "G-ABC123XYZ9"
 ADSENSE_CLIENT = ""    # AdSense publisher ID, e.g. "ca-pub-1234567890123456"
 # --------------------------------------------------------------------------
 
